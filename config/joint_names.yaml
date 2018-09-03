@@ -1,0 +1,7 @@
+controller_joint_names:
+  - base_link_to_base_yaw_link_joint
+  - base_yaw_link_to_first_link_joint
+  - first_link_to_second_link_joint
+  - second_link_to_third_link_joint
+  - third_link_to_fourth_link_joint
+  - fourth_link_to_fifth_link_joint

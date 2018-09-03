@@ -1,0 +1,8 @@
+# Define the goal
+control_msgs/FollowJointTrajectoryActionGoal goal_trajectory
+---
+# Define the result
+bool goal_reached
+---
+# Define a feedback message
+float32 percent_complete

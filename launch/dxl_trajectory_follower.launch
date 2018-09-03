@@ -1,0 +1,3 @@
+<launch>
+    <node ns="def_control" name="dxl_trajectory_follower" pkg="def_actuation" type="dxl_interface.py" respawn="false" output="screen"/>
+</launch>
