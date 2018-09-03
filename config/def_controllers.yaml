@@ -1,14 +1,9 @@
-# controller_manager_ns: def_control
-controller_list:
-  - name: dxl_trajectory_follower
-    action_ns: def_control
-    type: FollowJointTrajectory
-    default: true
-    joints:
-      - base_link_to_base_yaw_link_joint
-      - base_yaw_link_to_first_link_joint
-      - first_link_to_second_link_joint
-      - second_link_to_third_link_joint
-      - third_link_to_fourth_link_joint
-      - fourth_link_to_fifth_link_joint
+arm_controller:
+  type: "velocity_controllers/JointTrajectoryController"
+  joints:
+    - base_link_to_base_yaw_link_joint
+    - base_yaw_link_to_first_link_joint
 
+  gains: # Required because we're controlling a velocity interface
+    base_link_to_base_yaw_link_joint: {p: 100,  d: 1, i: 1, i_clamp: 1}
+    base_yaw_link_to_first_link_joint: {p: 100,  d: 1, i: 1, i_clamp: 1}
