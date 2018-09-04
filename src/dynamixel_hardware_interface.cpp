@@ -155,20 +155,49 @@ bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
 
 void MyRobot::write() {
     // get current cmd and convert to int
-    //for (int i = 0; i < NUM_MOTORS; i++)
+    bool dxl_addparam_result = false;
+    bool dxl_comm_result = false;
 
     for (int i = 0; i < NUM_MOTORS; i++) {
+
+        // get setpoint velocity from cmd-array, convert to int val
         if (IS_PRO[i]) {
             vel_raw[i] = (int)(cmd[i]/DXL_PRO_VEL_RAW_TO_RAD);
         } else {
             vel_raw[i] = (int)(cmd[i]/DXL_MX_VEL_RAW_TO_RAD);
         }
+
         // Allocate goal position value into byte array
         cmd_raw[i][0] = DXL_LOBYTE(DXL_LOWORD(vel_raw[i]));
         cmd_raw[i][1] = DXL_HIBYTE(DXL_LOWORD(vel_raw[i]));
         cmd_raw[i][2] = DXL_LOBYTE(DXL_HIWORD(vel_raw[i]));
         cmd_raw[i][3] = DXL_HIBYTE(DXL_HIWORD(vel_raw[i]));
+
+        // add to groupwrite  params
+        if (IS_PRO[i]) {
+            dxl_addparam_result = gswPRO->addParam(MOTOR_IDS[i], cmd_raw[i]);
+            if (dxl_addparam_result != true) {
+                fprintf(stderr, "[ID:%03d] groupSyncWrite addparam failed", MOTOR_IDS[i]);
+                return;
+            }
+        } else {
+            dxl_addparam_result = gswMX->addParam(MOTOR_IDS[i], cmd_raw[i]);
+            if (dxl_addparam_result != true) {
+                fprintf(stderr, "[ID:%03d] groupSyncWrite addparam failed", MOTOR_IDS[i]);
+                return;
+            }
+        }
     }
+
+    // finally write commands
+    dxl_comm_result = gswPRO->txPacket();
+    if (dxl_comm_result != COMM_SUCCESS) printf("groupsyncwrite failed for PRO");
+    dxl_comm_result = gswMX->txPacket();
+    if (dxl_comm_result != COMM_SUCCESS) printf("groupsyncwrite failed for MX");
+
+    // clear params for next round
+    gswPRO->clearParam();
+    gswMX->clearParam();
 }
 
 // *********************************** main *********************************************
