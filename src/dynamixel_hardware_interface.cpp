@@ -18,10 +18,10 @@ class MyRobot : public hardware_interface::RobotHW
   private:
     hardware_interface::JointStateInterface jnt_state_interface;
     hardware_interface::VelocityJointInterface jnt_vel_interface;
-    double cmd[2];
-    double pos[2];
-    double vel[2];
-    double eff[2];
+    double cmd[NUM_MOTORS];
+    double pos[NUM_MOTORS];
+    double vel[NUM_MOTORS];
+    double eff[NUM_MOTORS];
 
     ros::NodeHandle node_handle_;
 
@@ -33,6 +33,9 @@ class MyRobot : public hardware_interface::RobotHW
 
     // velocity sync write group for pro and mx
     dynamixel::GroupSyncWrite *gswPRO, *gswMX;
+    // some helper variables
+    uint8_t cmd_raw[NUM_MOTORS][4];
+    int vel_raw[NUM_MOTORS];
     // position sync read group for pro and mx
     dynamixel::GroupSyncRead *gsrPROpos, *gsrMXpos;
 >>>>>>> b855221c82396a3eb6e82949e934c0a73e0f816e
@@ -155,7 +158,21 @@ bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
 
 =======
 void MyRobot::write() {
+    // get current cmd and convert to int
+    //for (int i = 0; i < NUM_MOTORS; i++)
 
+    for (int i = 0; i < NUM_MOTORS; i++) {
+        if (IS_PRO[i]) {
+            vel_raw[i] = (int)(cmd[i]/DXL_PRO_VEL_RAW_TO_RAD);
+        } else {
+            vel_raw[i] = (int)(cmd[i]/DXL_MX_VEL_RAW_TO_RAD);
+        }
+        // Allocate goal position value into byte array
+        cmd_raw[i][0] = DXL_LOBYTE(DXL_LOWORD(vel_raw[i]));
+        cmd_raw[i][1] = DXL_HIBYTE(DXL_LOWORD(vel_raw[i]));
+        cmd_raw[i][2] = DXL_LOBYTE(DXL_HIWORD(vel_raw[i]));
+        cmd_raw[i][3] = DXL_HIBYTE(DXL_HIWORD(vel_raw[i]));
+    }
 }
 >>>>>>> b855221c82396a3eb6e82949e934c0a73e0f816e
 
