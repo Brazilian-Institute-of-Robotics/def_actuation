@@ -2,6 +2,7 @@
 #include <hardware_interface/joint_state_interface.h>
 #include <hardware_interface/robot_hw.h>
 #include <controller_manager/controller_manager.h>
+#include "control_table.h"
 
 class MyRobot : public hardware_interface::RobotHW
 {
