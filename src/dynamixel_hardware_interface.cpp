@@ -3,7 +3,7 @@
 #include <hardware_interface/robot_hw.h>
 #include <controller_manager/controller_manager.h>
 #include "control_table.h"
-#include <dynamixel_sdk/dynamixel_sdk.h>
+#include "dynamixel_sdk/dynamixel_sdk.h"
 
 class MyRobot : public hardware_interface::RobotHW
 {
@@ -11,7 +11,8 @@ class MyRobot : public hardware_interface::RobotHW
     MyRobot();
     void initializeMotors();
     void readJointStates();
-    bool enableTorque(uint8_t dynamxiel_id);
+    bool enableTorque(uint8_t dynamxiel_id, uint16_t addr_torque_enable);
+    bool disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable);
 
   private:
     hardware_interface::JointStateInterface jnt_state_interface;
@@ -21,8 +22,8 @@ class MyRobot : public hardware_interface::RobotHW
     double vel[2];
     double eff[2];
 
-    dynamixel::PortHandler portHandler;
-    dynamixel::PacketHandler packetHandler;
+    dynamixel::PortHandler *portHandler;
+    dynamixel::PacketHandler *packetHandler;
 };
 
 MyRobot::MyRobot()
@@ -53,9 +54,9 @@ void MyRobot::readJointStates()
 void MyRobot::initializeMotors()
 {
     // Set the port path
-    &portHandler = dynamixel::PortHandler::getPortHandler(DEVICENAME);
+    portHandler = dynamixel::PortHandler::getPortHandler(DEVICENAME);
     // Set the protocol version
-    &packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
+    packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
 
     // Open port
     if (portHandler->openPort())
@@ -78,20 +79,45 @@ void MyRobot::initializeMotors()
     }
 }
 
-bool MyRobot::enableTorque(uint8_t dynamxiel_id)
+bool MyRobot::enableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
 {
-    dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE, &dxl_error);
+    uint8_t dxl_error = 0;
+    int dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, dynamixel_id, addr_torque_enable, TORQUE_ENABLE, &dxl_error);
     if (dxl_comm_result != COMM_SUCCESS)
     {
-        packetHandler->printTxRxResult(dxl_comm_result);
+        ROS_WARN_STREAM("dxl_comm_result: " << dxl_comm_result);
+        return false;
     }
     else if (dxl_error != 0)
     {
-        packetHandler->printRxPacketError(dxl_error);
+        ROS_WARN_STREAM("dxl_error: " << dxl_error);
+        return false;
     }
     else
     {
-        printf("Dynamixel has been successfully connected \n");
+        ROS_INFO_STREAM("Torque of dynamixel with id " << dynamixel_id << "successfully enabled");
+        return true;
+    }
+}
+
+bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
+{
+    uint8_t dxl_error = 0;
+    int dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, dynamixel_id, addr_torque_enable, TORQUE_DISABLE, &dxl_error);
+    if (dxl_comm_result != COMM_SUCCESS)
+    {
+        ROS_WARN_STREAM("dxl_comm_result: " << dxl_comm_result);
+        return false;
+    }
+    else if (dxl_error != 0)
+    {
+        ROS_WARN_STREAM("dxl_error: " << dxl_error);
+        return false;
+    }
+    else
+    {
+        ROS_INFO_STREAM("Torque of dynamixel with id " << dynamixel_id << "successfully disabled");
+        return true;
     }
 }
 
@@ -100,6 +126,7 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "dynamixel_hardware_interface");
     ros::NodeHandle node_handle;
+    ros::NodeHandle node_handle_("~ids"); // node_handle_ namespace is /dynamixel_hardware_interface/ids
     ros::AsyncSpinner spinner(1);
     spinner.start();
 
