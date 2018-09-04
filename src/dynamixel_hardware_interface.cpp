@@ -23,9 +23,10 @@ class MyRobot : public hardware_interface::RobotHW
     double eff[2];
 
     ros::NodeHandle node_handle_;
-    
+
     dynamixel::PortHandler *portHandler;
     dynamixel::PacketHandler *packetHandler;
+    
 };
 
 MyRobot::MyRobot(ros::NodeHandle nh)
@@ -52,6 +53,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
 
 void MyRobot::readJointStates()
 {
+
 }
 
 void MyRobot::initializeMotors()
@@ -60,7 +62,6 @@ void MyRobot::initializeMotors()
     portHandler = dynamixel::PortHandler::getPortHandler(DEVICENAME);
     // Set the protocol version
     packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
-
 
     // Open port
     if (portHandler->openPort())
@@ -85,6 +86,9 @@ void MyRobot::initializeMotors()
 
 bool MyRobot::enableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
 {
+    /* tries to enable the torque of the specified dynamxiel motor 
+    and returns true if it worked 
+    */
     uint8_t dxl_error = 0;
     int dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, dynamixel_id, addr_torque_enable, TORQUE_ENABLE, &dxl_error);
     if (dxl_comm_result != COMM_SUCCESS)
@@ -106,6 +110,9 @@ bool MyRobot::enableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
 
 bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
 {
+    /* tries to disable the torque of the specified dynamxiel motor 
+    and returns true if it worked 
+    */
     uint8_t dxl_error = 0;
     int dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, dynamixel_id, addr_torque_enable, TORQUE_DISABLE, &dxl_error);
     if (dxl_comm_result != COMM_SUCCESS)
@@ -125,21 +132,25 @@ bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
     }
 }
 
+
+
 // *********************************** main *********************************************
 int main(int argc, char **argv)
 {
+    ros::init(argc, argv, "dynamixel_hardware_interface");
+    ros::NodeHandle node_handle;
     ros::NodeHandle nh("~");
     MyRobot robot(nh);
-    ros::init(argc, argv, "dynamixel_hardware_interface");
     ros::AsyncSpinner spinner(1);
     spinner.start();
 
-    controller_manager::ControllerManager cm(&robot, nh);
+    controller_manager::ControllerManager cm(&robot, node_handle);
 
     ros::Rate rate(20); // 20 hz
 
     while (ros::ok())
     {
+        robot.readJointStates();
         // cm.update(robot.get_time(), robot.get_period());
         rate.sleep();
     }
