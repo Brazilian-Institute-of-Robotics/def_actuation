@@ -26,7 +26,7 @@
 #define ADDR_MX_PRESENT_VELOCITY     128  // 4 byte
 #define ADDR_MX_VEL_LIMIT            44   // 4 byte
 #define DXL_MX_VEL_RAW_TO_RAD        1.4388494353441252 //0.229*2*math.pi
-#define DXL_MX_TO_RAD                0.001533981 // factor to multiplicate to get rad value from raw position
+#define DXL_MX_TO_RAD                0.001533981 // factor to multiply to get rad value from raw position
 #define DXL_MX_POS_OFFSET            2047
 #define DXL_MX_GAIN                  20
 
@@ -57,3 +57,4 @@ const std::string JOINT_NAMES[NUM_MOTORS] = {
     "third_link_to_fourth_link_joint",
     "fourth_link_to_fifth_link_joint",
 };
+const bool IS_PRO[NUM_MOTORS] = {true,true,true,true,false,false};
