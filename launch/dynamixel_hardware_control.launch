@@ -1,6 +1,6 @@
 <launch>
 
-
+    <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen"> 
 
 
 

@@ -27,9 +27,6 @@ class MyRobot : public hardware_interface::RobotHW
 
     dynamixel::PortHandler *portHandler;
     dynamixel::PacketHandler *packetHandler;
-<<<<<<< HEAD
-    
-=======
 
     // velocity sync write group for pro and mx
     dynamixel::GroupSyncWrite *gswPRO, *gswMX;
@@ -38,34 +35,38 @@ class MyRobot : public hardware_interface::RobotHW
     int vel_raw[NUM_MOTORS];
     // position sync read group for pro and mx
     dynamixel::GroupSyncRead *gsrPROpos, *gsrMXpos;
->>>>>>> b855221c82396a3eb6e82949e934c0a73e0f816e
 };
 
 MyRobot::MyRobot(ros::NodeHandle nh)
 {
+    // get access inside the class to a nodeHandle
     node_handle_ = nh;
-    // connect and register the joint state interface
-    hardware_interface::JointStateHandle state_handle_a("base_link_to_base_yaw_link_joint", &pos[0], &vel[0], &eff[0]);
-    jnt_state_interface.registerHandle(state_handle_a);
 
-    hardware_interface::JointStateHandle state_handle_b("base_yaw_link_to_first_link_joint", &pos[1], &vel[1], &eff[1]);
-    jnt_state_interface.registerHandle(state_handle_b);
+    // connect and register the joint state interface
+    hardware_interface::JointStateHandle *state_handles[NUM_MOTORS];
+
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+        *state_handles[i] = hardware_interface::JointStateHandle(JOINT_NAMES[i], &pos[0], &vel[0], &eff[0]);
+        jnt_state_interface.registerHandle(*state_handles[i]);
+    }
 
     registerInterface(&jnt_state_interface);
 
     // connect and register the joint position interface
-    hardware_interface::JointHandle pos_handle_a(jnt_state_interface.getHandle("base_link_to_base_yaw_link_joint"), &cmd[0]);
-    jnt_vel_interface.registerHandle(pos_handle_a);
+    hardware_interface::JointHandle *vel_handles[NUM_MOTORS];
 
-    hardware_interface::JointHandle pos_handle_b(jnt_state_interface.getHandle("base_yaw_link_to_first_link_joint"), &cmd[1]);
-    jnt_vel_interface.registerHandle(pos_handle_b);
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+        *vel_handles[i] = hardware_interface::JointHandle(jnt_state_interface.getHandle(JOINT_NAMES[i]), &cmd[0]);
+        jnt_vel_interface.registerHandle(*vel_handles[i]);
+    }
 
     registerInterface(&jnt_vel_interface);
 }
 
 void MyRobot::readJointStates()
 {
-
 }
 
 void MyRobot::initializeMotors()
@@ -75,8 +76,6 @@ void MyRobot::initializeMotors()
     // Set the protocol version
     packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
 
-<<<<<<< HEAD
-=======
     // Goal position length is 4 for both MX and PRO
     *gswPRO = dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
     *gswMX = dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_MX_GOAL_VELOCITY, 4);
@@ -84,7 +83,6 @@ void MyRobot::initializeMotors()
     *gsrPROpos = dynamixel::GroupSyncRead(portHandler, packetHandler, ADDR_PRO_PRESENT_POSITION, 4);
     *gsrMXpos = dynamixel::GroupSyncRead(portHandler, packetHandler, ADDR_MX_PRESENT_POSITION, 4);
 
->>>>>>> b855221c82396a3eb6e82949e934c0a73e0f816e
     // Open port
     if (portHandler->openPort())
     {
@@ -154,9 +152,7 @@ bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
     }
 }
 
-<<<<<<< HEAD
 
-=======
 void MyRobot::write() {
     // get current cmd and convert to int
     //for (int i = 0; i < NUM_MOTORS; i++)
@@ -173,8 +169,7 @@ void MyRobot::write() {
         cmd_raw[i][2] = DXL_LOBYTE(DXL_HIWORD(vel_raw[i]));
         cmd_raw[i][3] = DXL_HIBYTE(DXL_HIWORD(vel_raw[i]));
     }
-}
->>>>>>> b855221c82396a3eb6e82949e934c0a73e0f816e
+
 
 // *********************************** main *********************************************
 int main(int argc, char **argv)
