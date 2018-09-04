@@ -3,7 +3,7 @@
 
 # Interface for trajectory following for dynamixel pro
 
-import os, sys, time, rospy
+import os, sys, time, rospy, math
 import tty, termios
 import dynamixel_functions as dynamixel                     # Uses Dynamixel SDK library
 import actionlib
@@ -12,6 +12,7 @@ import actionlib
 import std_msgs
 import control_msgs.msg as ctrl_msgs
 #from control_msgs.msg import FollowJointTrajectoryAction
+import trajectory_msgs.msg as traj_msgs
 from trajectory_msgs.msg import JointTrajectory
 from sensor_msgs.msg import JointState
 
@@ -29,7 +30,9 @@ ADDR_PRO_PRESENT_POSITION    = 611 # 4 byte
 ADDR_PRO_GOAL_VELOCITY       = 600 # 4 byte
 ADDR_PRO_PRESENT_VELOCITY    = 615 # 4 byte
 ADDR_PRO_GOAL_TORQUE         = 604 # 2 byte
-DXL_PRO_TO_RAD               = 0.000001252 # factor to multiplicate to get rad value from raw position
+DXL_PRO_TO_RAD               = 0.00001251822551901305 # factor to multiply to get rad value from raw position
+DXL_PRO_VEL_RAW_TO_RAD       = 0.012518241414906177
+DXL_PRO_GAIN                 = 20
 
 # Firmware 2.0, check control table
 # http://support.robotis.com/en/product/actuator/dynamixel/mx_series/mx-106(2.0).htm
@@ -42,7 +45,10 @@ ADDR_106_PRESENT_POSITION    = 132  # 4 byte
 ADDR_106_GOAL_VELOCITY       = 104  # 4 byte
 ADDR_106_PRESENT_VELOCITY    = 128  # 4 byte
 ADDR_106_VEL_LIMIT           = 44   # 4 byte
+DXL_106_VEL_RAW_TO_RAD       = 0.229*2*math.pi
 DXL_106_TO_RAD               = 0.001533981 # factor to multiplicate to get rad value from raw position
+DXL_106_POS_OFFSET           = 2047
+DXL_106_GAIN                 = 20
 
 # Protocol version
 PROTOCOL_VERSION            = 2                             # See which protocol version is used in the Dynamixel
@@ -99,8 +105,8 @@ class DxlInterface:
 
     # Joint names and Dynamixel IDs
     joints = {
-        "base_link_to_base_yaw_link_joint": 2,
-        "fourth_link_to_fifth_link_joint": 1
+        "base_link_to_base_yaw_link_joint": (2, True),
+        "fourth_link_to_fifth_link_joint": (1, False)
     }
 
     # Decode which joints are PRO
@@ -110,7 +116,11 @@ class DxlInterface:
     }
 
     currentTrajectory = JointTrajectory()
+    trajectoryStartTime = 0.0
+    currentIndex = 0
+    currentTrajectoryLen = 0
     moving = False
+    goalReached = True
     _trajFeedback = ctrl_msgs.FollowJointTrajectoryActionFeedback()
     _trajResult = ctrl_msgs.FollowJointTrajectoryActionResult()
 
@@ -141,7 +151,7 @@ class DxlInterface:
         dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_TORQUE_ENABLE, TORQUE_ENABLE)
 
     def initDxlPro(self):
-            # set opmode to velocity control
+        # set opmode to velocity control
         dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_OP_MODE, PRO_OPMODE_VEL)
 
         # Enable Dynamixel Torque
@@ -157,18 +167,40 @@ class DxlInterface:
 
 
     # Set new Trajectory as goal
-    def setNewTrajectory(self,goal):
+    def setNewTrajectory(self,g):
         # if another trajectory is in progress, decline
         if self.moving:
             return
 
         # check if requested joints match the existent
-        if not set(goal.trajectory.joint_names) <= set(self.joints):
+        if not set(g.goal.trajectory.joint_names) <= set(self.joints.keys()):
             return
         
         # check if initial position is close enough to the trajectory initial position
         currentState = self.getJointState()
-        
+        for jn in g.goal.trajectory.joint_names:
+            # get index in trajectory for reading position for joint
+            currentIndex = g.goal.trajectory.joint_names.index(jn)
+
+            # get index in current joint state
+            currentJsIdx = currentState.name.index(jn)
+            actualPos = currentState.position[currentJsIdx]
+            if (g.goal.trajectory.points[0].positions[currentIndex] < actualPos - TRAJECTORY_START_TOLERANCE) or (g.goal.trajectory.points[0].positions[currentIndex] > actualPos + TRAJECTORY_START_TOLERANCE):
+                # start position violates limits, abort
+                rospy.loginfo("Trajectory start position violates Limits, aborting. Joint: %s. Actual: %f. Trajectory: %f"%(jn,actualPos,g.goal.trajectory.points[0].positions[currentIndex]))
+                # todo: some actionlib result-stuff
+                return
+
+        # if execution got here, everything is fine and the trajectory can be executed
+        self.currentTrajectory = g.goal.trajectory
+        self.currentTrajectoryLen = len(self.currentTrajectory.points)
+        self.moving = True
+        self.goalReached = False
+        self.currentIndex = 0
+        self.trajectoryStartTime = rospy.Time.now()
+
+            
+
 
     # gets raw position and velocity data from given dynamixels and returns
     # constructed sensor_msgs.JointState for further use in ROS
@@ -183,24 +215,128 @@ class DxlInterface:
 
         for js in self.joints:
             js_msg.name.append(js)
-            if self.joint_pro[js]:
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js], ADDR_PRO_PRESENT_POSITION)
+            if self.joints[js][1]:
+                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_PRO_PRESENT_POSITION)
                 js_msg.position.append(raw*DXL_PRO_TO_RAD)
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js], ADDR_PRO_PRESENT_VELOCITY)
+                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_PRO_PRESENT_VELOCITY)
                 js_msg.velocity.append(raw)
             else:
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js], ADDR_106_PRESENT_POSITION)
-                js_msg.position.append(raw*DXL_106_TO_RAD)
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js], ADDR_106_PRESENT_VELOCITY)
-                js_msg.velocity.append(raw)
+                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_106_PRESENT_POSITION)
+                js_msg.position.append((raw-DXL_106_POS_OFFSET)*DXL_106_TO_RAD)
+                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_106_PRESENT_VELOCITY)
+                js_msg.velocity.append(raw*DXL_106_VEL_RAW_TO_RAD)
         
         return js_msg
 
 
-    # 
+    
     def move(self):
         """move joints to follow given trajectory, or keep current position"""
-        pass
+        currentState = self.getJointState()
+        trajectoryExecTime = rospy.Time.now() - self.trajectoryStartTime
+
+        # compute indice of trajectory that fits best for current time
+        if self.currentIndex < self.currentTrajectoryLen - 2:
+            if self.currentTrajectory.points[self.currentIndex + 1].time_from_start < trajectoryExecTime:
+                self.currentIndex += 1
+        else:
+            # reached goal
+            # todo: maybe keep position if dynamixels will turn from weight
+            # send velocity to dynamixel
+            for jn in self.currentTrajectory.joint_names:
+                if self.joints[jn][1]:
+                    dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_GOAL_VELOCITY, 0)
+                else:
+                    dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_GOAL_VELOCITY, 0)
+
+            self.moving = False
+            self.goalReached = True
+            return
+        
+        for jn in self.currentTrajectory.joint_names:
+            # get index in trajectory for reading position for joint
+            jointIndex = self.currentTrajectory.joint_names.index(jn)
+
+            # compute actual position
+            currentJsIdx = currentState.name.index(jn)
+            actualPos = currentState.position[currentJsIdx]
+
+            # compute setpoint position
+            firstPos = (self.currentTrajectory.points[self.currentIndex].positions[jointIndex],self.currentTrajectory.points[self.currentIndex].time_from_start)
+            secPos = (self.currentTrajectory.points[self.currentIndex+1].positions[jointIndex],self.currentTrajectory.points[self.currentIndex+1].time_from_start)
+            # print(firstPos)
+            # print(secPos)
+            posDiff = secPos[0] - firstPos[0]
+            timeDiff = secPos[1] - firstPos[1]
+            # print("posDiff=%f"%posDiff)
+            timeFromLastPoint = trajectoryExecTime - self.currentTrajectory.points[self.currentIndex].time_from_start
+            # print(timeFromLastPoint)
+            # posError = actualPos - (firstPos[0] + (timeFromLastPoint/timeDiff)*posDiff)
+            posError = (firstPos[0] + (timeFromLastPoint/timeDiff)*posDiff)
+            # print("pos error: %f" % posError)
+
+            # send velocity to dynamixel
+            if self.joints[jn][1]:
+                print("sending %i to dynamixel pro" % int(posError/DXL_PRO_TO_RAD))
+                dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[jn][0], ADDR_PRO_GOAL_POSITION, int(posError/DXL_PRO_TO_RAD))
+            else:
+                print("sending %i to dynamixel 106" % int(posError/DXL_106_TO_RAD))
+                dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[jn][0], ADDR_106_GOAL_POSITION, int(posError/DXL_106_TO_RAD))
+
+
+    def test(self):
+        g = ctrl_msgs.FollowJointTrajectoryActionGoal()
+        g.goal.trajectory.header.stamp = rospy.Time.now()
+        g.goal.trajectory.joint_names = ["base_link_to_base_yaw_link_joint", "fourth_link_to_fifth_link_joint"]
+        msg = traj_msgs.JointTrajectoryPoint()
+        msg.time_from_start = rospy.Duration.from_sec(0.0)
+        msg.positions = [0.0, 0.0]
+        g.goal.trajectory.points.append(msg)
+        msg = traj_msgs.JointTrajectoryPoint()
+        msg.time_from_start = rospy.Duration.from_sec(2.0)
+        msg.positions = [1.57, 6.0]
+        g.goal.trajectory.points.append(msg)
+        msg = traj_msgs.JointTrajectoryPoint()
+        msg.time_from_start = rospy.Duration.from_sec(4.0)
+        msg.positions = [0, 2.0]
+        g.goal.trajectory.points.append(msg)
+        msg = traj_msgs.JointTrajectoryPoint()
+        msg.time_from_start = rospy.Duration.from_sec(6.0)
+        msg.positions = [-1.57, -1.0]
+        g.goal.trajectory.points.append(msg)
+        msg = traj_msgs.JointTrajectoryPoint()
+        msg.time_from_start = rospy.Duration.from_sec(8.0)
+        msg.positions = [0.0, -2.0]
+        g.goal.trajectory.points.append(msg)
+
+
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_TORQUE_ENABLE, TORQUE_DISABLE)
+
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_OP_MODE, PRO_OPMODE_POS)
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_OP_MODE, PRO_OPMODE_POS)
+
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_TORQUE_ENABLE, TORQUE_ENABLE)
+
+        dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_GOAL_POSITION, 0)
+        dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_GOAL_POSITION, 2047)
+    
+        time.sleep(3)
+
+
+        # dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
+        # dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_TORQUE_ENABLE, TORQUE_DISABLE)
+
+        # dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_OP_MODE, PRO_OPMODE_VEL)
+        # dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_OP_MODE, PRO_OPMODE_VEL)
+
+
+        # dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
+        # dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_TORQUE_ENABLE, TORQUE_ENABLE)
+
+        self.setNewTrajectory(g)
+
 
 
 
@@ -218,7 +354,10 @@ class DxlInterface:
         _server.start()
         #server.set_succeeded()
         #rospy.Subscriber("/dyn_ef_robot/dyn_ef_robot_controller/follow_joint_trajectory/goal", String, setNewTrajectory)
-        rate = rospy.Rate(1) # 10hz
+        rate = rospy.Rate(20) # 10hz
+
+
+        self.test()
 
         while not rospy.is_shutdown():
             # print("Press any key to continue! (or press ESC to quit!)")
@@ -236,11 +375,14 @@ class DxlInterface:
                     upgoing = True
 
             # Write goal position
-            dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_GOAL_VELOCITY, actual_vel)
-            dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_GOAL_VELOCITY, actual_vel/16)
+            # dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_GOAL_VELOCITY, actual_vel)
+            # dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_GOAL_VELOCITY, actual_vel/16)
 
             currentJointState = self.getJointState()
             jointStatePub.publish(currentJointState)
+
+            if not self.goalReached:
+                self.move()
             # if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
             #     print("not successful")
             #     dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
