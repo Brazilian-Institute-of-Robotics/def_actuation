@@ -8,7 +8,7 @@
 class MyRobot : public hardware_interface::RobotHW
 {
   public:
-    MyRobot();
+    MyRobot(ros::NodeHandle nh);
     void initializeMotors();
     void readJointStates();
     bool enableTorque(uint8_t dynamxiel_id, uint16_t addr_torque_enable);
@@ -22,12 +22,15 @@ class MyRobot : public hardware_interface::RobotHW
     double vel[2];
     double eff[2];
 
+    ros::NodeHandle node_handle_;
+    
     dynamixel::PortHandler *portHandler;
     dynamixel::PacketHandler *packetHandler;
 };
 
-MyRobot::MyRobot()
+MyRobot::MyRobot(ros::NodeHandle nh)
 {
+    node_handle_ = nh;
     // connect and register the joint state interface
     hardware_interface::JointStateHandle state_handle_a("base_link_to_base_yaw_link_joint", &pos[0], &vel[0], &eff[0]);
     jnt_state_interface.registerHandle(state_handle_a);
@@ -57,6 +60,7 @@ void MyRobot::initializeMotors()
     portHandler = dynamixel::PortHandler::getPortHandler(DEVICENAME);
     // Set the protocol version
     packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
+
 
     // Open port
     if (portHandler->openPort())
@@ -124,14 +128,13 @@ bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
 // *********************************** main *********************************************
 int main(int argc, char **argv)
 {
+    ros::NodeHandle nh("~");
+    MyRobot robot(nh);
     ros::init(argc, argv, "dynamixel_hardware_interface");
-    ros::NodeHandle node_handle;
-    ros::NodeHandle node_handle_("~ids"); // node_handle_ namespace is /dynamixel_hardware_interface/ids
     ros::AsyncSpinner spinner(1);
     spinner.start();
 
-    MyRobot robot;
-    controller_manager::ControllerManager cm(&robot, node_handle);
+    controller_manager::ControllerManager cm(&robot, nh);
 
     ros::Rate rate(20); // 20 hz
 
