@@ -169,7 +169,7 @@ void MyRobot::write() {
         cmd_raw[i][2] = DXL_LOBYTE(DXL_HIWORD(vel_raw[i]));
         cmd_raw[i][3] = DXL_HIBYTE(DXL_HIWORD(vel_raw[i]));
     }
-
+}
 
 // *********************************** main *********************************************
 int main(int argc, char **argv)
