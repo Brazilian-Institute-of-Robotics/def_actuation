@@ -46,3 +46,5 @@
 
 #define COMM_SUCCESS                 0                             // Communication Success result value
 #define COMM_TX_FAIL                 -1001                         // Communication Tx Failed
+
+const uint8_t MOTOR_IDS[6] = {1,2,3,4,5,6};
