@@ -46,3 +46,14 @@
 
 #define COMM_SUCCESS                 0                             // Communication Success result value
 #define COMM_TX_FAIL                 -1001                         // Communication Tx Failed
+
+#define NUM_MOTORS 6
+const uint8_t MOTOR_IDS[NUM_MOTORS] = {1,2,3,4,5,6};
+const std::string JOINT_NAMES[NUM_MOTORS] = {
+    "base_link_to_base_yaw_link_joint",
+    "base_yaw_link_to_first_link_joint",
+    "first_link_to_second_link_joint",
+    "second_link_to_third_link_joint",
+    "third_link_to_fourth_link_joint",
+    "fourth_link_to_fifth_link_joint",
+};
