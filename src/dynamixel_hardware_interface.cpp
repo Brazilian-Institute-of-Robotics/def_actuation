@@ -13,6 +13,7 @@ class MyRobot : public hardware_interface::RobotHW
     void readJointStates();
     bool enableTorque(uint8_t dynamxiel_id, uint16_t addr_torque_enable);
     bool disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable);
+    void write();
 
   private:
     hardware_interface::JointStateInterface jnt_state_interface;
@@ -26,6 +27,11 @@ class MyRobot : public hardware_interface::RobotHW
     
     dynamixel::PortHandler *portHandler;
     dynamixel::PacketHandler *packetHandler;
+
+    // velocity sync write group for pro and mx
+    dynamixel::GroupSyncWrite *gswPRO, *gswMX;
+    // position sync read group for pro and mx
+    dynamixel::GroupSyncRead *gsrPROpos, *gsrMXpos;
 };
 
 MyRobot::MyRobot(ros::NodeHandle nh)
@@ -61,6 +67,12 @@ void MyRobot::initializeMotors()
     // Set the protocol version
     packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
 
+    // Goal position length is 4 for both MX and PRO
+    *gswPRO = dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
+    *gswMX = dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_MX_GOAL_VELOCITY, 4);
+    // Present position, length also identical
+    *gsrPROpos = dynamixel::GroupSyncRead(portHandler, packetHandler, ADDR_PRO_PRESENT_POSITION, 4);
+    *gsrMXpos = dynamixel::GroupSyncRead(portHandler, packetHandler, ADDR_MX_PRESENT_POSITION, 4);
 
     // Open port
     if (portHandler->openPort())
@@ -123,6 +135,10 @@ bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
         ROS_INFO_STREAM("Torque of dynamixel with id " << dynamixel_id << "successfully disabled");
         return true;
     }
+}
+
+void MyRobot::write() {
+
 }
 
 // *********************************** main *********************************************
