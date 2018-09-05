@@ -19,17 +19,20 @@ class MyRobot : public hardware_interface::RobotHW
     hardware_interface::JointStateInterface jnt_state_interface;
     hardware_interface::VelocityJointInterface jnt_vel_interface;
     double cmd[NUM_MOTORS];
-    double pos[NUM_MOTORS];
-    double vel[NUM_MOTORS];
+    double pos[NUM_MOTORS]; // in rad
+    double vel[NUM_MOTORS]; // in rad/s
     double eff[NUM_MOTORS];
 
     ros::NodeHandle node_handle_;
 
+    // communication
     dynamixel::PortHandler *portHandler;
     dynamixel::PacketHandler *packetHandler;
 
     // velocity sync write group for pro and mx
     dynamixel::GroupSyncWrite *gswPRO, *gswMX;
+    // velocity sync read group for pro and mx
+    dynamixel::GroupSyncRead *gsrPROvel, *gsrMXvel;
     // some helper variables
     uint8_t cmd_raw[NUM_MOTORS][4];
     int vel_raw[NUM_MOTORS];
@@ -53,7 +56,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
 
     registerInterface(&jnt_state_interface);
 
-    // connect and register the joint position interface
+    // connect and register the joint velocity interface
     hardware_interface::JointHandle *vel_handles[NUM_MOTORS];
 
     for (int i = 0; i < NUM_MOTORS; i++)
@@ -286,6 +289,8 @@ int main(int argc, char **argv)
     MyRobot robot(nh);
     ros::AsyncSpinner spinner(1);
     spinner.start();
+
+    robot.initializeMotors();
 
     controller_manager::ControllerManager cm(&robot, node_handle);
 
