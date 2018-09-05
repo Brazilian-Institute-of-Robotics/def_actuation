@@ -43,42 +43,32 @@ class MyRobot : public hardware_interface::RobotHW
 MyRobot::MyRobot(ros::NodeHandle nh)
 {
     // get access inside the class to a nodeHandle
-    // node_handle_ = nh;
-
-//    hardware_interface::JointStateHandle state_handle_a("A", &pos[0], &vel[0], &eff[0]);
-//    jnt_state_interface.registerHandle(state_handle_a);
-
-//    registerInterface(&jnt_state_interface);
-
-//    hardware_interface::JointHandle pos_handle_b(jnt_state_interface.getHandle("A"), &cmd[1]);
-//    jnt_vel_interface.registerHandle(pos_handle_b);
-
-//    registerInterface(&jnt_vel_interface);
+    node_handle_ = nh;
 
     // // connect and register the joint state interface
-    // std::vector<hardware_interface::JointStateHandle> state_handles;
+    std::vector<hardware_interface::JointStateHandle> state_handles;
 
-    // for (int i = 0; i < NUM_MOTORS; i++)
-    // {
-    //     hardware_interface::JointStateHandle state_handle(JOINT_NAMES[i], &pos[0], &vel[0], &eff[0]);
-    //     // jnt_state_interface.registerHandle( state_handle );
-    //     state_handles.push_back(state_handle);
-    //     jnt_state_interface.registerHandle( state_handles.back() );
-    // }
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+       hardware_interface::JointStateHandle state_handle(JOINT_NAMES[i], &pos[i], &vel[i], &eff[i]);
+       // jnt_state_interface.registerHandle( state_handle );
+       state_handles.push_back(state_handle);
+       jnt_state_interface.registerHandle( state_handles.back() );
+    }
 
-    // registerInterface(&jnt_state_interface);
+    registerInterface(&jnt_state_interface);
 
-    // // connect and register the joint velocity interface
-    // std::vector<hardware_interface::JointHandle> vel_handles;
+    // connect and register the joint velocity interface
+    std::vector<hardware_interface::JointHandle> vel_handles;
 
-    // for (int i = 0; i < NUM_MOTORS; i++)
-    // {
-    //     hardware_interface::JointHandle vel_handle(jnt_state_interface.getHandle(JOINT_NAMES[i]), &cmd[0]);
-    //     vel_handles.push_back(vel_handle);
-    //     jnt_vel_interface.registerHandle( vel_handles.back() );
-    // }
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+       hardware_interface::JointHandle vel_handle(jnt_state_interface.getHandle(JOINT_NAMES[i]), &cmd[i]);
+       vel_handles.push_back(vel_handle);
+       jnt_vel_interface.registerHandle(vel_handles.back());
+    }
 
-    // registerInterface(&jnt_vel_interface);
+    registerInterface(&jnt_vel_interface);
 }
 
 void MyRobot::readJointStates()
@@ -159,10 +149,15 @@ void MyRobot::initializeMotors()
     packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
 
     // Goal position length is 4 for both MX and PRO
-    *gswPRO = dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
-    *gswMX = dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_MX_GOAL_VELOCITY, 4);
+    gswPRO = (dynamixel::GroupSyncWrite*)malloc(sizeof(dynamixel::GroupSyncWrite));
+    gswMX = (dynamixel::GroupSyncWrite*)malloc(sizeof(dynamixel::GroupSyncWrite));
+    dynamixel::GroupSyncWrite temp(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
+    gswPRO = &temp;
+    dynamixel::GroupSyncWrite temp1(portHandler, packetHandler, ADDR_MX_GOAL_VELOCITY, 4);
+    gswMX = &temp1;
 
     // init bulk read stuff
+    gbr = (dynamixel::GroupBulkRead*)malloc(sizeof(dynamixel::GroupBulkRead));
     *gbr = dynamixel::GroupBulkRead(portHandler, packetHandler);
 
     // Open port
