@@ -1,8 +1,27 @@
 <launch>
 
-    <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen"> 
+    <!-- Load the URDF into the ROS Parameter Server -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find dynamic_end_effector)/urdf/dynamic-ef.urdf.xacro' --inorder" />
+
+    <!-- Load joint controller configurations from YAML file to parameter server -->
+    <rosparam file="$(find def_actuation)/config/def_controllers.yaml" command="load"/>
+    <!-- spawn the joint_state_controller from the def_controllers.yaml file -->
+    <node pkg="controller_manager" type="spawner" name="joint_state_publisher_spawner" respawn="false" output="screen" ns="/real_robot_controllers" args="joint_state_controller" />
+    <!-- spawn the def_controller from the def_controllers.yaml file -->
+    <node pkg="controller_manager" type="spawner" name="def_controller_spawner" respawn="false" output="screen" ns="/real_robot_controllers" args="def_controller"/>
+
+    <!-- starting the robot hardware. reading the motor values and writing comands to the motors -->
+    <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen">
 
 
 
+    <!-- see http://wiki.ros.org/joint_state_publisher for further information -->
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+        <param name="/use_gui" value="false"/>
+        <rosparam param="/source_list">[/dyn_ef_robot/joint_states]</rosparam>
+    </node>
+
+    <!-- convert joint states to TF transforms for rviz, etc -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen" />
 
 </launch>

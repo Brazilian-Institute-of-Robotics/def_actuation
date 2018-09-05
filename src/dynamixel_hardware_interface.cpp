@@ -43,29 +43,42 @@ class MyRobot : public hardware_interface::RobotHW
 MyRobot::MyRobot(ros::NodeHandle nh)
 {
     // get access inside the class to a nodeHandle
-    node_handle_ = nh;
+    // node_handle_ = nh;
 
-    // connect and register the joint state interface
-    hardware_interface::JointStateHandle *state_handles[NUM_MOTORS];
+//    hardware_interface::JointStateHandle state_handle_a("A", &pos[0], &vel[0], &eff[0]);
+//    jnt_state_interface.registerHandle(state_handle_a);
 
-    for (int i = 0; i < NUM_MOTORS; i++)
-    {
-        *state_handles[i] = hardware_interface::JointStateHandle(JOINT_NAMES[i], &pos[0], &vel[0], &eff[0]);
-        jnt_state_interface.registerHandle(*state_handles[i]);
-    }
+//    registerInterface(&jnt_state_interface);
 
-    registerInterface(&jnt_state_interface);
+//    hardware_interface::JointHandle pos_handle_b(jnt_state_interface.getHandle("A"), &cmd[1]);
+//    jnt_vel_interface.registerHandle(pos_handle_b);
 
-    // connect and register the joint velocity interface
-    hardware_interface::JointHandle *vel_handles[NUM_MOTORS];
+//    registerInterface(&jnt_vel_interface);
 
-    for (int i = 0; i < NUM_MOTORS; i++)
-    {
-        *vel_handles[i] = hardware_interface::JointHandle(jnt_state_interface.getHandle(JOINT_NAMES[i]), &cmd[0]);
-        jnt_vel_interface.registerHandle(*vel_handles[i]);
-    }
+    // // connect and register the joint state interface
+    // std::vector<hardware_interface::JointStateHandle> state_handles;
 
-    registerInterface(&jnt_vel_interface);
+    // for (int i = 0; i < NUM_MOTORS; i++)
+    // {
+    //     hardware_interface::JointStateHandle state_handle(JOINT_NAMES[i], &pos[0], &vel[0], &eff[0]);
+    //     // jnt_state_interface.registerHandle( state_handle );
+    //     state_handles.push_back(state_handle);
+    //     jnt_state_interface.registerHandle( state_handles.back() );
+    // }
+
+    // registerInterface(&jnt_state_interface);
+
+    // // connect and register the joint velocity interface
+    // std::vector<hardware_interface::JointHandle> vel_handles;
+
+    // for (int i = 0; i < NUM_MOTORS; i++)
+    // {
+    //     hardware_interface::JointHandle vel_handle(jnt_state_interface.getHandle(JOINT_NAMES[i]), &cmd[0]);
+    //     vel_handles.push_back(vel_handle);
+    //     jnt_vel_interface.registerHandle( vel_handles.back() );
+    // }
+
+    // registerInterface(&jnt_vel_interface);
 }
 
 void MyRobot::readJointStates()
@@ -78,46 +91,60 @@ void MyRobot::readJointStates()
     // do the actual read
     dxl_comm_result = gbr->txRxPacket();
 
-
     // check if parameters available, assign them to pos[] and vel[]
-    for (int i = 0; i < NUM_MOTORS; i++) {
-        if (IS_PRO[i]) {
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+        if (IS_PRO[i])
+        {
             dxl_getdata_result_p = gbr->isAvailable(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
-            if (dxl_getdata_result_p != true) {
-                fprintf(stderr, "[ID:%03d] groupBulkRead position failed for PRO", MOTOR_IDS[i]);
+            if (dxl_getdata_result_p != true)
+            {
+                ROS_WARN("[ID:%03d] groupBulkRead position failed for PRO", MOTOR_IDS[i]);
                 continue;
             }
             dxl_getdata_result_v = gbr->isAvailable(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
-            if (dxl_getdata_result_v != true) {
-                fprintf(stderr, "[ID:%03d] groupBulkRead velocity failed for PRO", MOTOR_IDS[i]);
+            if (dxl_getdata_result_v != true)
+            {
+                ROS_WARN("[ID:%03d] groupBulkRead velocity failed for PRO", MOTOR_IDS[i]);
                 continue;
             }
-        } else {
+        }
+        else
+        {
             dxl_getdata_result_p = gbr->isAvailable(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
-            if (dxl_getdata_result_p != true) {
-                fprintf(stderr, "[ID:%03d] groupBulkRead position failed for MX", MOTOR_IDS[i]);
+            if (dxl_getdata_result_p != true)
+            {
+                ROS_WARN("[ID:%03d] groupBulkRead position failed for MX", MOTOR_IDS[i]);
                 continue;
             }
             dxl_getdata_result_v = gbr->isAvailable(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
-            if (dxl_getdata_result_v != true) {
-                fprintf(stderr, "[ID:%03d] groupBulkRead vellocity failed for MX", MOTOR_IDS[i]);
+            if (dxl_getdata_result_v != true)
+            {
+                ROS_WARN("[ID:%03d] groupBulkRead vellocity failed for MX", MOTOR_IDS[i]);
                 continue;
             }
         }
 
         // get data and assign to pos[] and vel[]
-        if (IS_PRO[i]) {
-            if (dxl_getdata_result_p) {
+        if (IS_PRO[i])
+        {
+            if (dxl_getdata_result_p)
+            {
                 pos[i] = DXL_PRO_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
             }
-            if (dxl_getdata_result_v) {
+            if (dxl_getdata_result_v)
+            {
                 vel[i] = DXL_PRO_VEL_RAW_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
             }
-        } else {
-            if (dxl_getdata_result_p) {
+        }
+        else
+        {
+            if (dxl_getdata_result_p)
+            {
                 pos[i] = DXL_MX_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
             }
-            if (dxl_getdata_result_v) {
+            if (dxl_getdata_result_v)
+            {
                 vel[i] = DXL_MX_VEL_RAW_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
             }
         }
@@ -160,24 +187,32 @@ void MyRobot::initializeMotors()
 
     // init bulk read conf
     bool dxl_addparam_result = false;
-    for (int i = 0; i < NUM_MOTORS; i++) {
-        if (IS_PRO[i]) {
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+        if (IS_PRO[i])
+        {
             dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
-            if (dxl_addparam_result != true) {
-                fprintf(stderr, "[ID:%03d] grouBulkRead addparam pos failed for PRO", MOTOR_IDS[i]);
+            if (dxl_addparam_result != true)
+            {
+                ROS_WARN("[ID:%03d] grouBulkRead addparam pos failed for PRO", MOTOR_IDS[i]);
             }
             dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
-            if (dxl_addparam_result != true) {
-                fprintf(stderr, "[ID:%03d] grouBulkRead addparam vel failed for PRO", MOTOR_IDS[i]);
+            if (dxl_addparam_result != true)
+            {
+                ROS_WARN("[ID:%03d] grouBulkRead addparam vel failed for PRO", MOTOR_IDS[i]);
             }
-        } else {
+        }
+        else
+        {
             dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
-            if (dxl_addparam_result != true) {
-                fprintf(stderr, "[ID:%03d] grouBulkRead addparam pos failed for MX", MOTOR_IDS[i]);
+            if (dxl_addparam_result != true)
+            {
+                ROS_WARN("[ID:%03d] grouBulkRead addparam pos failed for MX", MOTOR_IDS[i]);
             }
             dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
-            if (dxl_addparam_result != true) {
-                fprintf(stderr, "[ID:%03d] grouBulkRead addparam vel failed for MX", MOTOR_IDS[i]);
+            if (dxl_addparam_result != true)
+            {
+                ROS_WARN("[ID:%03d] grouBulkRead addparam vel failed for MX", MOTOR_IDS[i]);
             }
         }
     }
@@ -231,20 +266,24 @@ bool MyRobot::disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
     }
 }
 
-
-void MyRobot::write() {
+void MyRobot::write()
+{
     // TODO: implement safety limits, set velocity always to 0 if violated
     // get current cmd and convert to int
     bool dxl_addparam_result = false;
     bool dxl_comm_result = false;
 
-    for (int i = 0; i < NUM_MOTORS; i++) {
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
 
         // get setpoint velocity from cmd-array, convert to int val
-        if (IS_PRO[i]) {
-            vel_raw[i] = (int)(cmd[i]/DXL_PRO_VEL_RAW_TO_RAD);
-        } else {
-            vel_raw[i] = (int)(cmd[i]/DXL_MX_VEL_RAW_TO_RAD);
+        if (IS_PRO[i])
+        {
+            vel_raw[i] = (int)(cmd[i] / DXL_PRO_VEL_RAW_TO_RAD);
+        }
+        else
+        {
+            vel_raw[i] = (int)(cmd[i] / DXL_MX_VEL_RAW_TO_RAD);
         }
 
         // Allocate goal position value into byte array
@@ -254,16 +293,21 @@ void MyRobot::write() {
         cmd_raw[i][3] = DXL_HIBYTE(DXL_HIWORD(vel_raw[i]));
 
         // add to groupwrite  params
-        if (IS_PRO[i]) {
+        if (IS_PRO[i])
+        {
             dxl_addparam_result = gswPRO->addParam(MOTOR_IDS[i], cmd_raw[i]);
-            if (dxl_addparam_result != true) {
-                fprintf(stderr, "[ID:%03d] groupSyncWrite addparam failed", MOTOR_IDS[i]);
+            if (dxl_addparam_result != true)
+            {
+                ROS_WARN("[ID:%03d] groupSyncWrite addparam failed", MOTOR_IDS[i]);
                 return;
             }
-        } else {
+        }
+        else
+        {
             dxl_addparam_result = gswMX->addParam(MOTOR_IDS[i], cmd_raw[i]);
-            if (dxl_addparam_result != true) {
-                fprintf(stderr, "[ID:%03d] groupSyncWrite addparam failed", MOTOR_IDS[i]);
+            if (dxl_addparam_result != true)
+            {
+                ROS_WARN("[ID:%03d] groupSyncWrite addparam failed", MOTOR_IDS[i]);
                 return;
             }
         }
@@ -271,9 +315,11 @@ void MyRobot::write() {
 
     // finally write commands
     dxl_comm_result = gswPRO->txPacket();
-    if (dxl_comm_result != COMM_SUCCESS) printf("groupsyncwrite failed for PRO");
+    if (dxl_comm_result != COMM_SUCCESS)
+        ROS_WARN("groupsyncwrite failed for PRO");
     dxl_comm_result = gswMX->txPacket();
-    if (dxl_comm_result != COMM_SUCCESS) printf("groupsyncwrite failed for MX");
+    if (dxl_comm_result != COMM_SUCCESS)
+        ROS_WARN("groupsyncwrite failed for MX");
 
     // clear params for next round
     gswPRO->clearParam();

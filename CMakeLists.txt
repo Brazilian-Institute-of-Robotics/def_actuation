@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   hardware_interface
   controller_manager
   dynamixel_sdk
+  dynamic_end_effector
 )
 
 ## System dependencies are found with CMake's conventions
