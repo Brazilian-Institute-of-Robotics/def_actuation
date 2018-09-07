@@ -30,6 +30,7 @@ ADDR_PRO_PRESENT_POSITION    = 611 # 4 byte
 ADDR_PRO_GOAL_VELOCITY       = 600 # 4 byte
 ADDR_PRO_PRESENT_VELOCITY    = 615 # 4 byte
 ADDR_PRO_GOAL_TORQUE         = 604 # 2 byte
+ADDR_PRO_PRESENT_CURRENT     = 621 # 2 byte
 DXL_PRO_TO_RAD               = 0.00001251822551901305 # factor to multiply to get rad value from raw position
 DXL_PRO_VEL_RAW_TO_RAD       = 0.012518241414906177
 DXL_PRO_GAIN                 = 20
@@ -55,7 +56,7 @@ PROTOCOL_VERSION            = 2                             # See which protocol
 
 DXL_PRO_ID                  = 2
 DXL_106_ID                  = 1
-BAUDRATE                    = 1000000
+BAUDRATE                    = 57600
 DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')
 
 PRO_OPMODE_VEL = 1
@@ -105,8 +106,8 @@ class DxlInterface:
 
     # Joint names and Dynamixel IDs
     joints = {
-        "base_link_to_base_yaw_link_joint": (2, True),
-        "fourth_link_to_fifth_link_joint": (1, False)
+        "base_link_to_base_yaw_link_joint": (1, False),
+        "fourth_link_to_fifth_link_joint": (10, False)
     }
 
     # Decode which joints are PRO
@@ -123,6 +124,9 @@ class DxlInterface:
     goalReached = True
     _trajFeedback = ctrl_msgs.FollowJointTrajectoryActionFeedback()
     _trajResult = ctrl_msgs.FollowJointTrajectoryActionResult()
+
+    groupread_num = dynamixel.groupBulkRead(port_num, PROTOCOL_VERSION)
+    groupwrite_num = dynamixel.groupBulkWrite(port_num, PROTOCOL_VERSION)
 
     def __init__(self):
         # Initialize PacketHandler Structs
@@ -141,10 +145,23 @@ class DxlInterface:
             print("Failed to change the baudrate!")
             quit()
 
+        for jn in g.goal.trajectory.joint_names:
+
+            if joints[jn][1]:
+                # set to read bytes containing position, velocity and current
+                dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(groupread_num, joints[jn][0], ADDR_PRO_PRESENT_POSITION, 12)).value
+                if dxl_addparam_result != 1:
+                    print("addparam pro not suck-sessful")
+            else:
+                # set to read bytes containing position, velocity and current
+                dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(groupread_num, joints[jn][0], ADDR_106_PRESENT_CURRENT, 10)).value
+                if dxl_addparam_result != 1:
+                    print("addparam mx not suck-sessful")
+
 
     def initDxl106(self):
         # set opmode to velocity control
-        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_OP_MODE, PRO_OPMODE_VEL)
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_OP_MODE, PRO_OPMODE_POS)
         dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_MAXPOS_LIMIT, 4090)
         dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_MINPOS_LIMIT, 10)
         dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_VEL_LIMIT, 500)
@@ -152,7 +169,7 @@ class DxlInterface:
 
     def initDxlPro(self):
         # set opmode to velocity control
-        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_OP_MODE, PRO_OPMODE_VEL)
+        dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_OP_MODE, PRO_OPMODE_POS)
 
         # Enable Dynamixel Torque
         dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
@@ -213,18 +230,30 @@ class DxlInterface:
         js_msg.header = std_msgs.msg.Header()
         js_msg.header.stamp = rospy.Time.now()
 
+        dynamixel.groupBulkReadTxRxPacket(groupread_num)
+
         for js in self.joints:
             js_msg.name.append(js)
-            if self.joints[js][1]:
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_PRO_PRESENT_POSITION)
+            if joints[js][1]:
+                dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, joints[js][0], ADDR_PRO_PRESENT_POSITION, 12)).value
+                if dxl_getdata_result != 1:
+                    print("[ID:%03d] groupBulkRead PRO getdata failed" % (joints[js][0]))
+                    continue
+                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_PRO_PRESENT_POSITION, 4)
                 js_msg.position.append(raw*DXL_PRO_TO_RAD)
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_PRO_PRESENT_VELOCITY)
-                js_msg.velocity.append(raw)
+                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_PRO_PRESENT_VELOCITY, 4)
+                js_msg.velocity.append(raw*DXL_PRO_VEL_RAW_TO_RAD)
+
             else:
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_106_PRESENT_POSITION)
-                js_msg.position.append((raw-DXL_106_POS_OFFSET)*DXL_106_TO_RAD)
-                raw = dynamixel.read4ByteTxRx(port_num, PROTOCOL_VERSION, self.joints[js][0], ADDR_106_PRESENT_VELOCITY)
+                dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, joints[js][0], ADDR_106_PRESENT_POSITION, 10)).value
+                if dxl_getdata_result != 1:
+                    print("[ID:%03d] groupBulkRead MX getdata failed" % (joints[js][0]))
+                    continue
+                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_106_PRESENT_POSITION, 4)
+                js_msg.position.append(raw*DXL_106_TO_RAD)
+                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_106_PRESENT_VELOCITY, 4)
                 js_msg.velocity.append(raw*DXL_106_VEL_RAW_TO_RAD)
+
         
         return js_msg
 
@@ -243,11 +272,11 @@ class DxlInterface:
             # reached goal
             # todo: maybe keep position if dynamixels will turn from weight
             # send velocity to dynamixel
-            for jn in self.currentTrajectory.joint_names:
-                if self.joints[jn][1]:
-                    dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_GOAL_VELOCITY, 0)
-                else:
-                    dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_GOAL_VELOCITY, 0)
+#            for jn in self.currentTrajectory.joint_names:
+#                if self.joints[jn][1]:
+#                    dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_PRO_ID, ADDR_PRO_GOAL_POSITION, 0)
+#                else:
+#                    dynamixel.write4ByteTxRx(port_num, PROTOCOL_VERSION, DXL_106_ID, ADDR_106_GOAL_POSITION, 0)
 
             self.moving = False
             self.goalReached = True
