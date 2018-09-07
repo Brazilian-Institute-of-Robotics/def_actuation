@@ -9,6 +9,7 @@
 #define ADDR_PRO_PRESENT_POSITION     611 // 4 byte
 #define ADDR_PRO_GOAL_VELOCITY        600 // 4 byte
 #define ADDR_PRO_PRESENT_VELOCITY     615 // 4 byte
+#define ADDR_PRO_PRESENT_CURRENT      621  // 2 byte
 #define ADDR_PRO_GOAL_TORQUE          604 // 2 byte
 #define DXL_PRO_TO_RAD                0.00001251822551901305 // factor to multiply to get rad value from raw position
 #define DXL_PRO_VEL_RAW_TO_RAD        0.012518241414906177
@@ -24,6 +25,7 @@
 #define ADDR_MX_PRESENT_POSITION     132  // 4 byte
 #define ADDR_MX_GOAL_VELOCITY        104  // 4 byte
 #define ADDR_MX_PRESENT_VELOCITY     128  // 4 byte
+#define ADDR_MX_PRESENT_CURRENT      126  // 2 byte
 #define ADDR_MX_VEL_LIMIT            44   // 4 byte
 #define DXL_MX_VEL_RAW_TO_RAD        1.4388494353441252 //0.229*2*math.pi
 #define DXL_MX_TO_RAD                0.001533981 // factor to multiply to get rad value from raw position

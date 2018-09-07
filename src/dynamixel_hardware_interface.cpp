@@ -15,7 +15,7 @@ class MyRobot : public hardware_interface::RobotHW
     MyRobot(ros::NodeHandle nh);
     void initializeMotors();
     void readJointStates();
-    bool enableTorque(uint8_t dynamxiel_id, uint16_t addr_torque_enable);
+    bool enableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable);
     bool disableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable);
     void write();
 
@@ -88,16 +88,15 @@ void MyRobot::readJointStates()
 {
     // some helper variables
     bool dxl_comm_result = false;
-    bool dxl_getdata_result_p = false;
-    bool dxl_getdata_result_v = false;
+    bool dxl_getdata_result = false;
 
     // some joint_state msg to publish the joint states
-    sensor_msgs::JointState joint_state_msg;
+    sensor_msgs::JointState *joint_state_msg = new sensor_msgs::JointState;
     static int seq = 0;
-    joint_state_msg.header.seq = seq;
+    joint_state_msg->header.seq = seq;
     seq += 1;
-    joint_state_msg.header.frame_id = ""; //should probably fill with world
-    joint_state_msg.header.stamp = ros::Time::now();
+    joint_state_msg->header.frame_id = ""; //should probably fill with world
+    joint_state_msg->header.stamp = ros::Time::now();
 
     // do the actual read
     dxl_comm_result = gbr->txRxPacket();
@@ -107,31 +106,20 @@ void MyRobot::readJointStates()
     {
         if (IS_PRO[i])
         {
-            dxl_getdata_result_p = gbr->isAvailable(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
-            if (dxl_getdata_result_p != true)
+            // make sure
+            dxl_getdata_result = gbr->isAvailable(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 12);
+            if (dxl_getdata_result != true)
             {
                 ROS_WARN("[ID:%03d] groupBulkRead position failed for PRO", MOTOR_IDS[i]);
-                continue;
-            }
-            dxl_getdata_result_v = gbr->isAvailable(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
-            if (dxl_getdata_result_v != true)
-            {
-                ROS_WARN("[ID:%03d] groupBulkRead velocity failed for PRO", MOTOR_IDS[i]);
                 continue;
             }
         }
         else
         {
-            dxl_getdata_result_p = gbr->isAvailable(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
-            if (dxl_getdata_result_p != true)
+            dxl_getdata_result = gbr->isAvailable(MOTOR_IDS[i], ADDR_MX_PRESENT_CURRENT, 10);
+            if (dxl_getdata_result != true)
             {
                 ROS_WARN("[ID:%03d] groupBulkRead position failed for MX", MOTOR_IDS[i]);
-                continue;
-            }
-            dxl_getdata_result_v = gbr->isAvailable(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
-            if (dxl_getdata_result_v != true)
-            {
-                ROS_WARN("[ID:%03d] groupBulkRead vellocity failed for MX", MOTOR_IDS[i]);
                 continue;
             }
         }
@@ -139,34 +127,28 @@ void MyRobot::readJointStates()
         // get data and assign to pos[] and vel[]
         if (IS_PRO[i])
         {
-            if (dxl_getdata_result_p)
+            if (dxl_getdata_result)
             {
-                pos[i] = DXL_PRO_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
-            }
-            if (dxl_getdata_result_v)
-            {
-                vel[i] = DXL_PRO_VEL_RAW_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
+                pos[i] = DXL_PRO_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
+                vel[i] = DXL_PRO_VEL_RAW_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
             }
         }
         else
         {
-            if (dxl_getdata_result_p)
+            if (dxl_getdata_result)
             {
-                pos[i] = DXL_MX_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
-            }
-            if (dxl_getdata_result_v)
-            {
-                vel[i] = DXL_MX_VEL_RAW_TO_RAD * gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
+                pos[i] = DXL_MX_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
+                vel[i] = DXL_MX_VEL_RAW_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
             }
         }
 
-        joint_state_msg.name[i] = JOINT_NAMES[i];
-        joint_state_msg.position[i] = pos[i];
-        joint_state_msg.velocity[i] = vel[i];
-        joint_state_msg.effort[i] = 0.0;
+        joint_state_msg->name[i] = JOINT_NAMES[i];
+        joint_state_msg->position[i] = pos[i];
+        joint_state_msg->velocity[i] = vel[i];
+        joint_state_msg->effort[i] = 0.0;
     }
 
-    pub_joint_states.publish(joint_state_msg);
+    pub_joint_states.publish(*joint_state_msg);
 }
 
 void MyRobot::initializeMotors()
@@ -207,28 +189,20 @@ void MyRobot::initializeMotors()
     {
         if (IS_PRO[i])
         {
-            dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
+            // start reading at present position, next 12 bytes are pos[4], vel[4], (2 undefined bytes) and current[2]
+            dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 12);
             if (dxl_addparam_result != true)
             {
                 ROS_WARN("[ID:%03d] grouBulkRead addparam pos failed for PRO", MOTOR_IDS[i]);
             }
-            dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
-            if (dxl_addparam_result != true)
-            {
-                ROS_WARN("[ID:%03d] grouBulkRead addparam vel failed for PRO", MOTOR_IDS[i]);
-            }
         }
         else
         {
-            dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
+            // start reading at present current, next 10 bytes are current[2], vel[4], pos[4]
+            dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_MX_PRESENT_CURRENT, 10);
             if (dxl_addparam_result != true)
             {
                 ROS_WARN("[ID:%03d] grouBulkRead addparam pos failed for MX", MOTOR_IDS[i]);
-            }
-            dxl_addparam_result = gbr->addParam(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
-            if (dxl_addparam_result != true)
-            {
-                ROS_WARN("[ID:%03d] grouBulkRead addparam vel failed for MX", MOTOR_IDS[i]);
             }
         }
     }
