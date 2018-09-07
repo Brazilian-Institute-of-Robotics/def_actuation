@@ -41,6 +41,13 @@ class MyRobot : public hardware_interface::RobotHW
 };
 
 MyRobot::MyRobot(ros::NodeHandle nh)
+  : gswPRO(NULL)
+  , gswMX(NULL)
+  , gsrPROvel(NULL)
+  , gsrMXvel(NULL)
+  , gbr(NULL)
+  , portHandler(NULL)
+  , packetHandler(NULL)
 {
     // get access inside the class to a nodeHandle
     node_handle_ = nh;
@@ -149,16 +156,9 @@ void MyRobot::initializeMotors()
     packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
 
     // Goal position length is 4 for both MX and PRO
-    gswPRO = (dynamixel::GroupSyncWrite*)malloc(sizeof(dynamixel::GroupSyncWrite));
-    gswMX = (dynamixel::GroupSyncWrite*)malloc(sizeof(dynamixel::GroupSyncWrite));
-    dynamixel::GroupSyncWrite temp(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
-    gswPRO = &temp;
-    dynamixel::GroupSyncWrite temp1(portHandler, packetHandler, ADDR_MX_GOAL_VELOCITY, 4);
-    gswMX = &temp1;
-
-    // init bulk read stuff
-    gbr = (dynamixel::GroupBulkRead*)malloc(sizeof(dynamixel::GroupBulkRead));
-    *gbr = dynamixel::GroupBulkRead(portHandler, packetHandler);
+    gswPRO = new dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
+    gswMX = new dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
+    gbr = new dynamixel::GroupBulkRead(portHandler, packetHandler);
 
     // Open port
     if (portHandler->openPort())
