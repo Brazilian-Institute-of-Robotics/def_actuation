@@ -2,7 +2,6 @@
 #include <hardware_interface/joint_state_interface.h>
 #include <hardware_interface/robot_hw.h>
 #include <controller_manager/controller_manager.h>
-#include <controller_manager_msgs/SwitchController.h>
 #include <sensor_msgs/JointState.h>
 #include "control_table.h"
 #include "dynamixel_sdk/dynamixel_sdk.h"
@@ -46,13 +45,7 @@ class MyRobot : public hardware_interface::RobotHW
 };
 
 MyRobot::MyRobot(ros::NodeHandle nh)
-  : gswPRO(NULL)
-  , gswMX(NULL)
-  , gsrPROvel(NULL)
-  , gsrMXvel(NULL)
-  , gbr(NULL)
-  , portHandler(NULL)
-  , packetHandler(NULL)
+    : gswPRO(NULL), gswMX(NULL), gsrPROvel(NULL), gsrMXvel(NULL), gbr(NULL), portHandler(NULL), packetHandler(NULL)
 {
     // get access inside the class to a nodeHandle
     node_handle_ = nh;
@@ -321,11 +314,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "dynamixel_hardware_interface");
     ros::NodeHandle node_handle("dyn_ef_robot");
-    ros::NodeHandle nh;
-    MyRobot robot(nh);
-    ros::CallbackQueue my_callback_queue;
-    node_handle.setCallbackQueue(&my_callback_queue);
-    ros::AsyncSpinner spinner(0, &my_callback_queue);
+    MyRobot robot(node_handle);
+    ros::AsyncSpinner spinner(1);
     spinner.start();
 
     // open communication and read initial position
@@ -333,9 +323,10 @@ int main(int argc, char **argv)
 
     // nodeHandle in ControllerManager must be the same namespace as in def_controllers.yaml!
     controller_manager::ControllerManager cm(&robot, node_handle);
+
     // loading all the controller as only one controller manager can be used
-    bool success_loading_def_controller = cm.loadController("def_controller");
-    ROS_INFO("Loading controller 'def_controller' %s", success_loading_def_controller ? "Succeeded" : "FAILED");
+    // bool success_loading_def_controller = cm.loadController("def_controller");
+    // ROS_INFO("Loading controller 'def_controller' %s", success_loading_def_controller ? "Succeeded" : "FAILED");
     // starting the loaded controllers
     // if (success_loading_def_controller)
     // {
@@ -347,43 +338,18 @@ int main(int argc, char **argv)
     // }
 
     ros::Time timestamp = ros::Time::now();
-    ros::Duration period = ros::Time::now() - timestamp;
-    cm.update(ros::Time::now(), period);
-
-    // ros::ServiceClient start_controller_client = node_handle.serviceClient<controller_manager_msgs::SwitchController>("/dyn_ef_robot/controller_manager/switch_controller");
-    ros::ServiceClient start_controller_client = node_handle.serviceClient<controller_manager_msgs::SwitchController>("switch_controller");
-    controller_manager_msgs::SwitchController srv;
-    // std::vector<std::string> start, stop;
-    // start.push_back("def_controller");
-    // stop.push_back("");
-    srv.request.start_controllers.push_back("def_controller");
-    // srv.request.start_controllers = start;
-    // srv.request.stop_controllers = stop;
-    srv.request.strictness = 1;
-    // bool success_start_controller = start_controller_client.call(srv);
-    // ROS_INFO("Starting controllers %s", success_start_controller ? "Succeeded" : "FAILED");
-
     ros::Rate rate(10); // in hz
-    timestamp = ros::Time::now();
 
     while (ros::ok())
     {
         robot.readJointStates();
 
-        period = ros::Time::now() - timestamp;
+        ros::Duration period = ros::Time::now() - timestamp;
+        timestamp = ros::Time::now();
         cm.update(ros::Time::now(), period);
 
-        // ros::spinOnce();
+        // robot.write();
 
-        if(start_controller_client.exists())
-        {
-            bool success_start_controller = start_controller_client.call(srv);
-            ROS_INFO("Starting controllers %s", success_start_controller ? "Succeeded" : "FAILED");
-        }
-        else
-        {
-            ROS_INFO("Doesn't exists");
-        }
         rate.sleep();
     }
 }

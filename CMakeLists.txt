@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   controller_manager
   dynamixel_sdk
   dynamic_end_effector
+  controller_manager_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -137,6 +138,8 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(dynamixel_hardware_interface src/dynamixel_hardware_interface.cpp)
+add_executable(dynamixel_controller_loader src/dynamixel_controller_loader.cpp)
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -150,6 +153,9 @@ add_executable(dynamixel_hardware_interface src/dynamixel_hardware_interface.cpp
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(dynamixel_hardware_interface
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(dynamixel_controller_loader
   ${catkin_LIBRARIES}
 )
 

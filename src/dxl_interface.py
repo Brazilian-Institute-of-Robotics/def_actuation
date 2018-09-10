@@ -3,7 +3,7 @@
 
 # Interface for trajectory following for dynamixel pro
 
-import os, sys, time, rospy, math
+import os, sys, time, rospy, math, ctypes
 import tty, termios
 import dynamixel_functions as dynamixel                     # Uses Dynamixel SDK library
 import actionlib
@@ -45,6 +45,7 @@ ADDR_106_GOAL_POSITION       = 116  # 4 byte
 ADDR_106_PRESENT_POSITION    = 132  # 4 byte
 ADDR_106_GOAL_VELOCITY       = 104  # 4 byte
 ADDR_106_PRESENT_VELOCITY    = 128  # 4 byte
+ADDR_106_PRESENT_CURRENT     = 126  # 2 byte
 ADDR_106_VEL_LIMIT           = 44   # 4 byte
 DXL_106_VEL_RAW_TO_RAD       = 0.229*2*math.pi
 DXL_106_TO_RAD               = 0.001533981 # factor to multiplicate to get rad value from raw position
@@ -106,15 +107,9 @@ class DxlInterface:
 
     # Joint names and Dynamixel IDs
     joints = {
-        "base_link_to_base_yaw_link_joint": (1, False),
-        "fourth_link_to_fifth_link_joint": (10, False)
+        "base_link_to_base_yaw_link_joint": (1, False)
     }
 
-    # Decode which joints are PRO
-    joint_pro = {
-        "base_link_to_base_yaw_link_joint": True,
-        "fourth_link_to_fifth_link_joint": False
-    }
 
     currentTrajectory = JointTrajectory()
     trajectoryStartTime = 0.0
@@ -145,16 +140,16 @@ class DxlInterface:
             print("Failed to change the baudrate!")
             quit()
 
-        for jn in g.goal.trajectory.joint_names:
+        for jn in self.joints:
 
-            if joints[jn][1]:
+            if self.joints[jn][1]:
                 # set to read bytes containing position, velocity and current
-                dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(groupread_num, joints[jn][0], ADDR_PRO_PRESENT_POSITION, 12)).value
+                dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.groupread_num, self.joints[jn][0], ADDR_PRO_PRESENT_POSITION, 12)).value
                 if dxl_addparam_result != 1:
                     print("addparam pro not suck-sessful")
             else:
                 # set to read bytes containing position, velocity and current
-                dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(groupread_num, joints[jn][0], ADDR_106_PRESENT_CURRENT, 10)).value
+                dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.groupread_num, self.joints[jn][0], ADDR_106_PRESENT_CURRENT, 10)).value
                 if dxl_addparam_result != 1:
                     print("addparam mx not suck-sessful")
 
@@ -230,28 +225,28 @@ class DxlInterface:
         js_msg.header = std_msgs.msg.Header()
         js_msg.header.stamp = rospy.Time.now()
 
-        dynamixel.groupBulkReadTxRxPacket(groupread_num)
+        dynamixel.groupBulkReadRxPacket(self.groupread_num)
 
         for js in self.joints:
             js_msg.name.append(js)
-            if joints[js][1]:
-                dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, joints[js][0], ADDR_PRO_PRESENT_POSITION, 12)).value
+            if self.joints[js][1]:
+                dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.groupread_num, self.joints[js][0], ADDR_PRO_PRESENT_POSITION, 12)).value
                 if dxl_getdata_result != 1:
-                    print("[ID:%03d] groupBulkRead PRO getdata failed" % (joints[js][0]))
+                    print("[ID:%03d] groupBulkRead PRO getdata failed" % (self.joints[js][0]))
                     continue
-                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_PRO_PRESENT_POSITION, 4)
+                raw = dynamixel.groupBulkReadGetData(self.groupread_num, self.joints[js][0], ADDR_PRO_PRESENT_POSITION, 4)
                 js_msg.position.append(raw*DXL_PRO_TO_RAD)
-                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_PRO_PRESENT_VELOCITY, 4)
+                raw = dynamixel.groupBulkReadGetData(self.groupread_num, self.joints[js][0], ADDR_PRO_PRESENT_VELOCITY, 4)
                 js_msg.velocity.append(raw*DXL_PRO_VEL_RAW_TO_RAD)
 
             else:
-                dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, joints[js][0], ADDR_106_PRESENT_POSITION, 10)).value
+                dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.groupread_num, self.joints[js][0], ADDR_106_PRESENT_CURRENT, 2)).value
                 if dxl_getdata_result != 1:
-                    print("[ID:%03d] groupBulkRead MX getdata failed" % (joints[js][0]))
-                    continue
-                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_106_PRESENT_POSITION, 4)
+                    print("[ID:%03d] groupBulkRead MX getdata failed" % (self.joints[js][0]))
+                    # continue
+                raw = dynamixel.groupBulkReadGetData(self.groupread_num, self.joints[js][0], ADDR_106_PRESENT_CURRENT, 2)
                 js_msg.position.append(raw*DXL_106_TO_RAD)
-                raw = dynamixel.groupBulkReadGetData(groupread_num, joints[js][0], ADDR_106_PRESENT_VELOCITY, 4)
+                raw = dynamixel.groupBulkReadGetData(self.groupread_num, self.joints[js][0], ADDR_106_PRESENT_VELOCITY, 4)
                 js_msg.velocity.append(raw*DXL_106_VEL_RAW_TO_RAD)
 
         
@@ -410,8 +405,8 @@ class DxlInterface:
             currentJointState = self.getJointState()
             jointStatePub.publish(currentJointState)
 
-            if not self.goalReached:
-                self.move()
+            # if not self.goalReached:
+            #     self.move()
             # if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
             #     print("not successful")
             #     dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
@@ -453,7 +448,7 @@ class DxlInterface:
 if __name__ == '__main__':
     try:
         dxl = DxlInterface()
-        dxl.initDxl106()
+        #dxl.initDxl106()
         dxl.initDxlPro()
         dxl.start()
     except rospy.ROSInterruptException:

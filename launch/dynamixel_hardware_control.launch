@@ -16,7 +16,10 @@
                                                                                                                                             joint6_controller"/> -->
 
     <!-- starting the robot hardware. reading the motor values and writing comands to the motors -->
-    <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen" />
+   <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen" />
+
+    <!-- starting the controllers -->
+   <node pkg="def_actuation" type="dynamixel_controller_loader" name="dynamixel_controller_loader" output="screen" />
 
     <!-- convert joint states to TF transforms for rviz, etc -->
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen" />
