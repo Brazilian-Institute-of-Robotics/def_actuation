@@ -42,14 +42,56 @@ class MyRobot : public hardware_interface::RobotHW
     int vel_raw[NUM_MOTORS];
     // bulk read for pos and vel
     dynamixel::GroupBulkRead *gbr;
+
+    // motor configurations
+    std::vector<double> *joint_offsets;
+    std::vector<int> *joint_goal_torque, *joint_op_mode;
 };
 
 MyRobot::MyRobot(ros::NodeHandle nh)
-    : gswPRO(NULL), gswMX(NULL), gsrPROvel(NULL), gsrMXvel(NULL), gbr(NULL), portHandler(NULL), packetHandler(NULL)
+    : gswPRO(NULL), gswMX(NULL), gsrPROvel(NULL), gsrMXvel(NULL), gbr(NULL), portHandler(NULL), packetHandler(NULL),
+      joint_offsets(NULL), joint_goal_torque(NULL), joint_op_mode(NULL)
 {
     // get access inside the class to a nodeHandle
     node_handle_ = nh;
     pub_joint_states = node_handle_.advertise<sensor_msgs::JointState>("joint_states", 100);
+
+    // get motor configurations from parameter server
+    joint_offsets = new std::vector<double>();
+    joint_goal_torque = new std::vector<int>();
+    joint_op_mode = new std::vector<int>();
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+        double offset;
+        if (node_handle_.getParam("dyn_ef_robot/motor_configuration/joint" + std::to_string(i) + "/offset", offset))
+        {
+            joint_offsets->push_back(offset);
+        }
+        else
+        {
+            ROS_INFO("could not read parameter 'offset' from /dyn_ef_robot/motor_configuration");
+        }
+
+        int goal_torque;
+        if (node_handle_.getParam("dyn_ef_robot/motor_configuration/joint" + std::to_string(i) + "/goal_torque", goal_torque))
+        {
+            joint_goal_torque->push_back(goal_torque);
+        }
+        else
+        {
+            ROS_INFO("could not read parameter 'goal_torque' from /dyn_ef_robot/motor_configuration");
+        }
+
+        int op_mode;
+        if (node_handle_.getParam("dyn_ef_robot/motor_configuration/joint" + std::to_string(i) + "/operating_mode", op_mode))
+        {
+            joint_op_mode->push_back(op_mode);
+        }
+        else
+        {
+            ROS_INFO("could not read parameter 'operating_mode' from /dyn_ef_robot/motor_configuration");
+        }
+    }
 
     // // connect and register the joint state interface
     std::vector<hardware_interface::JointStateHandle> state_handles;
@@ -94,7 +136,6 @@ void MyRobot::readJointStates()
     // do the actual read
     dxl_comm_result = gbr->txRxPacket();
 
-    
     // check if parameters available, assign them to pos[] and vel[]
     for (int i = 0; i < NUM_MOTORS; i++)
     {
@@ -200,7 +241,7 @@ void MyRobot::initializeMotors()
     }
 
     // TODO configure motors: pos-, vel-, torque-limits and opmode
-    
+
     ROS_INFO("init finished");
 }
 
