@@ -164,7 +164,7 @@ void MyRobot::readJointStates()
         {
             if (dxl_getdata_result)
             {
-                pos[i] = DXL_PRO_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4);
+                pos[i] = DXL_PRO_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4) - *joint_offsets[i];
                 vel[i] = DXL_PRO_VEL_RAW_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
             }
         }
@@ -172,7 +172,7 @@ void MyRobot::readJointStates()
         {
             if (dxl_getdata_result)
             {
-                pos[i] = DXL_MX_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4);
+                pos[i] = DXL_MX_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_POSITION, 4) - *joint_offsets[i];
                 vel[i] = DXL_MX_VEL_RAW_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
             }
         }
@@ -242,6 +242,29 @@ void MyRobot::initializeMotors()
 
     // TODO configure motors: pos-, vel-, torque-limits and opmode
 
+    for (int i = 0; i < NUM_MOTORS; i++)
+    {
+        uint8_t dxl_error = 0;
+        if (IS_PRO[i])
+        {
+            int dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_PRO_GOAL_TORQUE, *joint_goal_torque[i], &dxl_error);
+            if (dxl_comm_result != COMM_SUCCESS)
+            {
+                ROS_WARN_STREAM("Error setting goal torque: " << dxl_comm_result);
+                continue;
+            }
+        }
+        else
+        {
+            dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_MX_GOAL_TORQUE, *joint_goal_torque[i], &dxl_error);
+            if (dxl_comm_result != COMM_SUCCESS)
+            {
+                ROS_WARN_STREAM("Error setting goal torque: " << dxl_comm_result);
+                continue;
+            }
+           
+        }
+    }
     ROS_INFO("init finished");
 }
 

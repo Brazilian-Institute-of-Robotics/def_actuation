@@ -24,6 +24,7 @@
 #define ADDR_MX_GOAL_POSITION        116  // 4 byte 
 #define ADDR_MX_PRESENT_POSITION     132  // 4 byte
 #define ADDR_MX_GOAL_VELOCITY        104  // 4 byte
+#define ADDR_MX_GOAL_CURRENT         102  // 2 byte
 #define ADDR_MX_PRESENT_VELOCITY     128  // 4 byte
 #define ADDR_MX_PRESENT_CURRENT      126  // 2 byte
 #define ADDR_MX_VEL_LIMIT            44   // 4 byte

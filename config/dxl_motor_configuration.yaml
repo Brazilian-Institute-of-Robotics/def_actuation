@@ -1,0 +1,38 @@
+dyn_ef_robot:
+  motor_configuration:
+    joint1:
+      offset: -1.5407807515566831
+      goal_torque: 100
+      operating_mode: 1
+      velocity_p_gain: 399
+      velocity_i_gain: 14
+    joint2:
+      offset: -0.00459418876547779
+      goal_torque: 100
+      operating_mode: 1
+      velocity_p_gain: 399
+      velocity_i_gain: 14
+    joint3:
+      offset: -5.600528914951249
+      goal_torque: 100
+      operating_mode: 1
+      velocity_p_gain: 399
+      velocity_i_gain: 14
+    joint4:
+      offset: 0.8008785140298978
+      goal_torque: 100
+      operating_mode: 1
+      velocity_p_gain: 256
+      velocity_i_gain: 16
+    joint5:
+      offset: 3.419243649
+      goal_current: 500 # 3.36[mA]
+      operating_mode: 1
+      velocity_p_gain: 440
+      velocity_i_gain: 40
+    joint6:
+      offset: 3.426913554
+      goal_current: 500 # 3.36[mA]
+      operating_mode: 1
+      velocity_p_gain: 440
+      velocity_i_gain: 40
