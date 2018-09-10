@@ -49,7 +49,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
 {
     // get access inside the class to a nodeHandle
     node_handle_ = nh;
-    pub_joint_states = node_handle_.advertise<sensor_msgs::JointState>("dyn_ef_robot/joint_states", 100);
+    pub_joint_states = node_handle_.advertise<sensor_msgs::JointState>("joint_states", 100);
 
     // // connect and register the joint state interface
     std::vector<hardware_interface::JointStateHandle> state_handles;
@@ -94,6 +94,7 @@ void MyRobot::readJointStates()
     // do the actual read
     dxl_comm_result = gbr->txRxPacket();
 
+    
     // check if parameters available, assign them to pos[] and vel[]
     for (int i = 0; i < NUM_MOTORS; i++)
     {
@@ -134,13 +135,11 @@ void MyRobot::readJointStates()
                 vel[i] = DXL_MX_VEL_RAW_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
             }
         }
-
-        joint_state_msg->name[i] = JOINT_NAMES[i];
-        joint_state_msg->position[i] = pos[i];
-        joint_state_msg->velocity[i] = vel[i];
-        joint_state_msg->effort[i] = 0.0;
+        joint_state_msg->name.push_back(JOINT_NAMES[i]);
+        joint_state_msg->position.push_back(pos[i]);
+        joint_state_msg->velocity.push_back(vel[i]);
+        joint_state_msg->effort.push_back(0.0);
     }
-
     pub_joint_states.publish(*joint_state_msg);
 }
 
@@ -199,6 +198,10 @@ void MyRobot::initializeMotors()
             }
         }
     }
+
+    // TODO configure motors: pos-, vel-, torque-limits and opmode
+    
+    ROS_INFO("init finished");
 }
 
 bool MyRobot::enableTorque(uint8_t dynamixel_id, uint16_t addr_torque_enable)
@@ -349,7 +352,6 @@ int main(int argc, char **argv)
         cm.update(ros::Time::now(), period);
 
         // robot.write();
-
         rate.sleep();
     }
 }

@@ -13,12 +13,12 @@ int main(int argc, char **argv)
 
     // service msg to load controller
     controller_manager_msgs::LoadController srv_load;
-    srv_load.request.name = "def_controller";
+    srv_load.request.name = "dyn_ef_robot_controller";
 
     // service msg to start controller
     // ros::ServiceClient start_controller_client = node_handle.serviceClient<controller_manager_msgs::SwitchController>("/dyn_ef_robot/controller_manager/switch_controller");
     controller_manager_msgs::SwitchController srv_switch;
-    srv_switch.request.start_controllers.push_back("def_controller");
+    srv_switch.request.start_controllers.push_back("dyn_ef_robot_controller");
     srv_switch.request.strictness = 1;
 
     // flags if services are already called
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     ros::Rate rate(5); // in hz
     while (ros::ok())
     {
-        // try to load def_controller
+        // try to load dyn_ef_robot_controller
         if (ros::service::exists("/dyn_ef_robot/controller_manager/load_controller", true))
         {
             if (!success_load_ctrl)
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
             }
         }
 
-        // try to start def_controller
+        // try to start dyn_ef_robot_controller
         if (ros::service::exists("/dyn_ef_robot/controller_manager/switch_controller", true))
         {
             if (!success_start_ctrl)

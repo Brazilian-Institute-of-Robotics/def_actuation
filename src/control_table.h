@@ -12,7 +12,7 @@
 #define ADDR_PRO_PRESENT_CURRENT      621  // 2 byte
 #define ADDR_PRO_GOAL_TORQUE          604 // 2 byte
 #define DXL_PRO_TO_RAD                0.00001251822551901305 // factor to multiply to get rad value from raw position
-#define DXL_PRO_VEL_RAW_TO_RAD        0.012518241414906177
+#define DXL_PRO_VEL_RAW_TO_RAD        0.00020863735691510296 // (0.00199234/60)*2*pi
 #define DXL_PRO_GAIN                  20
 
 // Firmware 2.0, check control table
@@ -27,7 +27,7 @@
 #define ADDR_MX_PRESENT_VELOCITY     128  // 4 byte
 #define ADDR_MX_PRESENT_CURRENT      126  // 2 byte
 #define ADDR_MX_VEL_LIMIT            44   // 4 byte
-#define DXL_MX_VEL_RAW_TO_RAD        1.4388494353441252 //0.229*2*math.pi
+#define DXL_MX_VEL_RAW_TO_RAD        0.023980823922402087 // 2*math.pi*0.229/60
 #define DXL_MX_TO_RAD                0.001533981 // factor to multiply to get rad value from raw position
 #define DXL_MX_POS_OFFSET            2047
 #define DXL_MX_GAIN                  20
