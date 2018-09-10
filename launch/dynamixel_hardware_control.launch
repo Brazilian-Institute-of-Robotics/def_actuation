@@ -5,23 +5,19 @@
 
     <!-- Load joint controller configurations from YAML file to parameter server -->
     <rosparam file="$(find def_actuation)/config/def_controllers.yaml" command="load"/>
-    <!-- spawn the def_controller from the def_controllers.yaml file -->
-    <!-- <node pkg="controller_manager" type="spawner" name="def_controller_spawner" respawn="false" output="screen" ns="/dyn_ef_robot" args="def_controller"/> -->
-    <!-- spawn the controllers for all single joints from the def_controllers.yaml file -->
-    <!-- <node pkg="controller_manager" type="spawner" name="join_controller_spawner" respawn="false" output="screen" ns="/dyn_ef_robot" args="joint1_controller
-                                                                                                                                            joint2_controller
-                                                                                                                                            joint3_controller
-                                                                                                                                            joint4_controller
-                                                                                                                                            joint5_controller
-                                                                                                                                            joint6_controller"/> -->
+
+    <!-- Load motor configurations from YAML file to parameter server -->
+    <rosparam file="$(find def_actuation)/config/dxl_motor_configuration.yaml" command="load"/>
 
     <!-- starting the robot hardware. reading the motor values and writing comands to the motors -->
-   <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen" />
+    <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen" />
 
     <!-- starting the controllers -->
-   <node pkg="def_actuation" type="dynamixel_controller_loader" name="dynamixel_controller_loader" output="screen" />
+    <node pkg="def_actuation" type="dynamixel_controller_loader" name="dynamixel_controller_loader" output="screen" />
 
     <!-- convert joint states to TF transforms for rviz, etc -->
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+        <remap from="/joint_states" to="/dyn_ef_robot/joint_states"/>
+    </node>
 
 </launch>
