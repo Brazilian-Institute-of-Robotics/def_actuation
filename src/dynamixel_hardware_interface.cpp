@@ -60,7 +60,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
 
     // get access inside the class to a nodeHandle
     node_handle_ = nh;
-    pub_joint_states = node_handle_.advertise<sensor_msgs::JointState>("joint_states", 100);
+    pub_joint_states = node_handle_.advertise<sensor_msgs::JointState>("/joint_states", 100);
 
     // get motor configurations from parameter server
     joint_offsets = new std::vector<double>();
@@ -209,7 +209,7 @@ void MyRobot::readJointStates()
                 vel[i] = DXL_MX_VEL_RAW_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_MX_PRESENT_VELOCITY, 4);
             }
         }
-        ROS_INFO_STREAM("ID " << i+1 << " pos: " << pos[i] << " vel: " << vel[i]);
+        // ROS_INFO_STREAM("ID " << i+1 << " pos: " << pos[i] << " vel: " << vel[i]);
         joint_state_msg->name.push_back(JOINT_NAMES[i]);
         joint_state_msg->position.push_back(pos[i]);
         joint_state_msg->velocity.push_back(vel[i]);
@@ -227,7 +227,7 @@ void MyRobot::initializeMotors()
 
     // Goal position length is 4 for both MX and PRO
     gswPRO = new dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
-    gswMX = new dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
+    gswMX = new dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_MX_GOAL_VELOCITY, 4);
     gbr = new dynamixel::GroupBulkRead(portHandler, packetHandler);
 
     // Open port
@@ -387,15 +387,16 @@ void MyRobot::write()
 
         // get setpoint velocity from cmd-array, convert to int val
         float cmd_temp = cmd[i];
-        constrain(cmd_temp,-(*joint_velocity_limit)[i],(*joint_velocity_limit)[i]);
+        cmd_temp = constrain(cmd_temp,-(*joint_velocity_limit)[i],(*joint_velocity_limit)[i]);
         if (IS_PRO[i])
         {
             vel_raw[i] = (int)(cmd_temp/DXL_PRO_VEL_RAW_TO_RAD);
+            // ROS_INFO_STREAM("CONSTRAINED VEL_RAW: " << vel_raw[i]);
         }
         else
         {
             vel_raw[i] = (int)(cmd_temp/DXL_MX_VEL_RAW_TO_RAD);
-            ROS_INFO_STREAM("PENIS: " << vel_raw[i]);
+            // ROS_INFO_STREAM("CONSTRAINED VEL_RAW: " << vel_raw[i]);
         }
 
         // Allocate goal position value into byte array
@@ -456,7 +457,7 @@ int main(int argc, char **argv)
     controller_manager::ControllerManager cm(&robot, node_handle);
 
     ros::Time timestamp = ros::Time::now();
-    ros::Rate rate(10); // in hz
+    ros::Rate rate(20); // in hz
 
     robot.switchTorque(TORQUE_ENABLE);
 
@@ -464,13 +465,11 @@ int main(int argc, char **argv)
     {
         robot.readJointStates();
 
-        robot.write();
-
         ros::Duration period = ros::Time::now() - timestamp;
         timestamp = ros::Time::now();
         cm.update(ros::Time::now(), period);
 
-        // robot.write();
+        robot.write();
         rate.sleep();
     }
     std::cout << "Disabling Torque!" << std::endl;

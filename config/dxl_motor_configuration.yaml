@@ -30,15 +30,15 @@ dyn_ef_robot:
       velocity_limit: 0.25 # rad/s
     joint5:
       offset: 3.419243649
-      goal_current: 500 # 3.36[mA]
+      goal_current: 2000 # 3.36[mA]
       operating_mode: 1
       velocity_p_gain: 440
       velocity_i_gain: 40
-      velocity_limit: 0.25 # rad/s
+      velocity_limit: 0.8 # rad/s
     joint6:
       offset: 3.426913554
-      goal_current: 500 # 3.36[mA]
+      goal_current: 2000 # 3.36[mA]
       operating_mode: 1
       velocity_p_gain: 440
       velocity_i_gain: 40
-      velocity_limit: 0.25 # rad/s
+      velocity_limit: 1.0 # rad/s
