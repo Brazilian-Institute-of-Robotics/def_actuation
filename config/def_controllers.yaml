@@ -3,27 +3,27 @@ dyn_ef_robot:
   joint1_controller:
     type: velocity_controllers/JointPositionController
     joint: base_link_to_base_yaw_link_joint
-    pid: {p: 3.0, i: 0.01, d: 0.0}
+    pid: {p: 3.0, i: 0.0, d: 0.0}
   joint2_controller:
     type: velocity_controllers/JointPositionController
     joint: base_yaw_link_to_first_link_joint
-    pid: {p: 3.0, i: 0.01, d: 0.0}
+    pid: {p: 3.0, i: 0.0, d: 0.0}
   joint3_controller:
     type: velocity_controllers/JointPositionController
     joint: first_link_to_second_link_joint
-    pid: {p: 3.0, i: 0.01, d: 0.0}
+    pid: {p: 3.0, i: 0.0, d: 0.0}
   joint4_controller:
     type: velocity_controllers/JointPositionController
     joint: second_link_to_third_link_joint
-    pid: {p: 3.0, i: 0.01, d: 0.0}
+    pid: {p: 3.0, i: 0.0, d: 0.0}
   joint5_controller:
     type: velocity_controllers/JointPositionController
     joint: third_link_to_fourth_link_joint
-    pid: {p: 3.0, i: 0.01, d: 0.0}
+    pid: {p: 3.0, i: 0.0, d: 0.0}
   joint6_controller:
     type: velocity_controllers/JointPositionController
     joint: fourth_link_to_fifth_link_joint
-    pid: {p: 3.0, i: 0.01, d: 0.0}
+    pid: {p: 3.0, i: 0.0, d: 0.0}
 
    # pid: {p: 100.0, i: 0.01, d: 10.0}
 
@@ -40,36 +40,36 @@ dyn_ef_robot:
       - second_link_to_third_link_joint
       - third_link_to_fourth_link_joint
       - fourth_link_to_fifth_link_joint
-    # constraints:
-    #   base_link_to_base_yaw_link_joint:
-    #     # Position tolerance for a particular joint to reach the goal. 
-    #     # When the joint is within goal_position +/- goal_tolerance, than the trajectory can succeed. 
-    #     goal: 0.01 
-    #     # Position tolerance for a particular joint throughout the trajectory. 
-    #     # If the joint position ever falls outside trajectory_position +/- tolerance, then the trajectory aborts. 
-    #     trajectory: 0.01 
-    #   base_yaw_link_to_first_link_joint:
-    #     goal: 0.01
-    #     trajectory: 0.01
-    #   first_link_to_second_link_joint:
-    #     goal: 0.01
-    #     trajectory: 0.01
-    #   second_link_to_third_link_joint:
-    #     goal: 0.01
-    #     trajectory: 0.01
-    #   third_link_to_fourth_link_joint:
-    #     goal: 0.01
-    #     trajectory: 0.01
-    #   fourth_link_to_fifth_link_joint:
-    #     goal: 0.01
-    #     trajectory: 0.01
+    constraints:
+      base_link_to_base_yaw_link_joint:
+        # Position tolerance for a particular joint to reach the goal. 
+        # When the joint is within goal_position +/- goal_tolerance, than the trajectory can succeed. 
+        goal: 0.03
+        # Position tolerance for a particular joint throughout the trajectory. 
+        # If the joint position ever falls outside trajectory_position +/- tolerance, then the trajectory aborts. 
+        trajectory: 0.03
+      base_yaw_link_to_first_link_joint:
+        goal: 0.03
+        trajectory: 0.03
+      first_link_to_second_link_joint:
+        goal: 0.03
+        trajectory: 0.03
+      second_link_to_third_link_joint:
+        goal: 0.03
+        trajectory: 0.03
+      third_link_to_fourth_link_joint:
+        goal: 0.03
+        trajectory: 0.03
+      fourth_link_to_fifth_link_joint:
+        goal: 0.03
+        trajectory: 0.03
     gains: # Required because we're controlling a velocity interface
-      base_link_to_base_yaw_link_joint: {p: 20,  d: 0, i: 0.1, i_clamp: 1}
-      base_yaw_link_to_first_link_joint: {p: 20,  d: 0, i: 0.1, i_clamp: 1}
-      first_link_to_second_link_joint: {p: 20,  d: 0, i: 0.1, i_clamp: 1}
-      second_link_to_third_link_joint: {p: 20,  d: 0, i: 0.1, i_clamp: 1}
-      third_link_to_fourth_link_joint: {p: 20,  d: 0, i: 0.1, i_clamp: 1}
-      fourth_link_to_fifth_link_joint: {p: 20,  d: 0, i: 0.1, i_clamp: 1}
+      base_link_to_base_yaw_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
+      base_yaw_link_to_first_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
+      first_link_to_second_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
+      second_link_to_third_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
+      third_link_to_fourth_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
+      fourth_link_to_fifth_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
 
 
     # Enables sending JointTrajectory messages with a partial set of joints. Default is false

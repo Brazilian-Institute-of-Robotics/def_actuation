@@ -15,9 +15,12 @@
     <!-- starting the controllers -->
     <node pkg="def_actuation" type="dynamixel_controller_loader" name="dynamixel_controller_loader" output="screen" />
 
+    <node pkg="topic_tools" type="relay" name="relay_joint_states" output="screen" args="/dyn_ef_robot/joint_states /joint_states"/>
+
     <!-- convert joint states to TF transforms for rviz, etc -->
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
         <remap from="/joint_states" to="/dyn_ef_robot/joint_states"/>
     </node>
+
 
 </launch>

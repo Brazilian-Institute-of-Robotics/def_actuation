@@ -66,3 +66,6 @@ const std::string JOINT_NAMES[NUM_MOTORS] = {
     "fourth_link_to_fifth_link_joint",
 };
 const bool IS_PRO[NUM_MOTORS] = {true,true,true,true,false,false};
+
+// useful for bounding values
+#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))

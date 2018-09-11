@@ -326,6 +326,7 @@ void MyRobot::initializeMotors()
                 continue;
             }
             // set velocity limit
+            ROS_INFO_STREAM("MX-Limit: " << (int)((*joint_velocity_limit)[i]/DXL_MX_VEL_RAW_TO_RAD));
             dxl_comm_result = packetHandler->write4ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_MX_VEL_LIMIT, (int)((*joint_velocity_limit)[i]/DXL_MX_VEL_RAW_TO_RAD), &dxl_error);
             if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
             {
@@ -385,13 +386,16 @@ void MyRobot::write()
     {
 
         // get setpoint velocity from cmd-array, convert to int val
+        float cmd_temp = cmd[i];
+        constrain(cmd_temp,-(*joint_velocity_limit)[i],(*joint_velocity_limit)[i]);
         if (IS_PRO[i])
         {
-            vel_raw[i] = (int)(cmd[i] / DXL_PRO_VEL_RAW_TO_RAD);
+            vel_raw[i] = (int)(cmd_temp/DXL_PRO_VEL_RAW_TO_RAD);
         }
         else
         {
-            vel_raw[i] = (int)(cmd[i] / DXL_MX_VEL_RAW_TO_RAD);
+            vel_raw[i] = (int)(cmd_temp/DXL_MX_VEL_RAW_TO_RAD);
+            ROS_INFO_STREAM("PENIS: " << vel_raw[i]);
         }
 
         // Allocate goal position value into byte array
@@ -420,7 +424,7 @@ void MyRobot::write()
             }
         }
         int val = (int)(cmd_raw[i][3] << 24 | cmd_raw[i][2] << 16 | cmd_raw[i][1] << 8 | cmd_raw[i][0]);
-        ROS_INFO_STREAM("dxl id: " << i << " cmd: " << cmd[i] << ". vel_raw: " << val);
+        ROS_INFO_STREAM("dxl id: " << i+1 << " cmd: " << cmd[i] << ". vel_raw: " << val);
     }
 
     // finally write commands
