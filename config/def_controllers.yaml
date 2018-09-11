@@ -41,6 +41,8 @@ dyn_ef_robot:
       - third_link_to_fourth_link_joint
       - fourth_link_to_fifth_link_joint
     constraints:
+      goal_time: 10.0
+      stopped_velocity_tolerance: 0.05
       base_link_to_base_yaw_link_joint:
         # Position tolerance for a particular joint to reach the goal. 
         # When the joint is within goal_position +/- goal_tolerance, than the trajectory can succeed. 

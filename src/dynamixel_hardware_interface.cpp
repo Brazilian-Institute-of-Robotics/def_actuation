@@ -49,11 +49,13 @@ class MyRobot : public hardware_interface::RobotHW
     std::vector<int> *joint_goal_torque, *joint_op_mode;
 
     bool retrievedParams;
+
+    int seq;
 };
 
 MyRobot::MyRobot(ros::NodeHandle nh)
     : gswPRO(NULL), gswMX(NULL), gsrPROvel(NULL), gsrMXvel(NULL), gbr(NULL), portHandler(NULL), packetHandler(NULL),
-      joint_offsets(NULL), joint_goal_torque(NULL), joint_op_mode(NULL), joint_velocity_limit(NULL)
+      joint_offsets(NULL), joint_goal_torque(NULL), joint_op_mode(NULL), joint_velocity_limit(NULL), seq(0)
 {
     // save if retrieving params worked
     retrievedParams = true;
@@ -152,6 +154,9 @@ MyRobot::MyRobot(ros::NodeHandle nh)
     registerInterface(&jnt_vel_interface);
 }
 
+/**
+ *  Reads position and velocity from dynamixel motors and publishes to joint states topic
+ */
 void MyRobot::readJointStates()
 {
     // some helper variables
@@ -160,21 +165,21 @@ void MyRobot::readJointStates()
 
     // some joint_state msg to publish the joint states
     sensor_msgs::JointState *joint_state_msg = new sensor_msgs::JointState;
-    static int seq = 0;
     joint_state_msg->header.seq = seq;
     seq += 1;
     joint_state_msg->header.frame_id = ""; //should probably fill with world
     joint_state_msg->header.stamp = ros::Time::now();
 
-    // do the actual read
+    // read data from dynamixels
     dxl_comm_result = gbr->txRxPacket();
 
     // check if parameters available, assign them to pos[] and vel[]
     for (int i = 0; i < NUM_MOTORS; i++)
     {
+        // distinguish between PRO and MX series, as they use different registers
         if (IS_PRO[i])
         {
-            // make sure
+            // check if desired block of data is available from read data
             dxl_getdata_result = gbr->isAvailable(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 12);
             if (dxl_getdata_result != true)
             {
@@ -192,11 +197,12 @@ void MyRobot::readJointStates()
             }
         }
 
-        // get data and assign to pos[] and vel[]
+        // get data from read data block and assign to pos[] and vel[]
         if (IS_PRO[i])
         {
             if (dxl_getdata_result)
             {
+                // subtract offsets
                 pos[i] = DXL_PRO_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_POSITION, 4) - (*joint_offsets)[i];
                 vel[i] = DXL_PRO_VEL_RAW_TO_RAD * (int)gbr->getData(MOTOR_IDS[i], ADDR_PRO_PRESENT_VELOCITY, 4);
             }
@@ -210,14 +216,23 @@ void MyRobot::readJointStates()
             }
         }
         // ROS_INFO_STREAM("ID " << i+1 << " pos: " << pos[i] << " vel: " << vel[i]);
+
+        // fill joint state message with retrieved joint information
         joint_state_msg->name.push_back(JOINT_NAMES[i]);
         joint_state_msg->position.push_back(pos[i]);
         joint_state_msg->velocity.push_back(vel[i]);
+
+        // effort publication is not yet implemented
         joint_state_msg->effort.push_back(0.0);
     }
+
+    // publish current joint state
     pub_joint_states.publish(*joint_state_msg);
 }
 
+/**
+ *  Initializes bulk read configuration, sets motors limits, operation mode etc..
+ */
 void MyRobot::initializeMotors()
 {
     // Set the port path
@@ -226,6 +241,7 @@ void MyRobot::initializeMotors()
     packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
 
     // Goal position length is 4 for both MX and PRO
+    // Initialize write- and read instances, distinction between pro and mx for write
     gswPRO = new dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_PRO_GOAL_VELOCITY, 4);
     gswMX = new dynamixel::GroupSyncWrite(portHandler, packetHandler, ADDR_MX_GOAL_VELOCITY, 4);
     gbr = new dynamixel::GroupBulkRead(portHandler, packetHandler);
@@ -250,7 +266,7 @@ void MyRobot::initializeMotors()
         ROS_WARN("Failed to change the baudrate!\n");
     }
 
-    // init bulk read conf
+    // add params for bulk read (ids and adresses to be read)
     bool dxl_addparam_result = false;
     for (int i = 0; i < NUM_MOTORS; i++)
     {
@@ -274,8 +290,8 @@ void MyRobot::initializeMotors()
         }
     }
 
-    // TODO configure motors: pos-, vel-, torque-limits and opmode
-
+    
+    // configure motors: set operation mode, set max velocity, torque
     for (int i = 0; i < NUM_MOTORS; i++)
     {
         int dxl_comm_result = 0;
@@ -338,6 +354,10 @@ void MyRobot::initializeMotors()
     ROS_INFO("init finished");
 }
 
+/**
+ *  Switch torque on or off for all listed motors
+ *  @param value Dynamixel register value for TORQUE_ENABLE (commonly 1 for enable, 0 for disable)
+ */
 bool MyRobot::switchTorque(int value)
 {
     /* enables the torque of the specified dynamxiel motor 
@@ -375,6 +395,9 @@ bool MyRobot::switchTorque(int value)
     }
 }
 
+/**
+ *  Write given cmd value from controller to the motors
+ */
 void MyRobot::write()
 {
     // TODO: implement safety limits, set velocity always to 0 if violated
