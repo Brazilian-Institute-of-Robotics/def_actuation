@@ -82,7 +82,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
         else
         {
             retrievedParams = false;
-            ROS_INFO_STREAM("could not read parameter 'offset' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
+            ROS_WARN_STREAM("could not read parameter 'offset' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
         }
 
         int goal_torque;
@@ -98,7 +98,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
         else
         {
             retrievedParams = false;
-            ROS_INFO_STREAM("could not read parameter 'goal_torque' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
+            ROS_WARN_STREAM("could not read parameter 'goal_torque' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
         }
 
         std::stringstream ss2;
@@ -111,7 +111,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
         else
         {
             retrievedParams = false;
-            ROS_INFO_STREAM("could not read parameter 'operating_mode' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
+            ROS_WARN_STREAM("could not read parameter 'operating_mode' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
         }
         
         std::stringstream ss3;
@@ -124,7 +124,7 @@ MyRobot::MyRobot(ros::NodeHandle nh)
         else
         {
             retrievedParams = false;
-            ROS_INFO_STREAM("could not read parameter 'velocity_limit' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
+            ROS_WARN_STREAM("could not read parameter 'velocity_limit' from /dyn_ef_robot/motor_configuration for id " << MOTOR_IDS[i]);
         }
     }
 
@@ -169,6 +169,7 @@ void MyRobot::readJointStates()
     seq += 1;
     joint_state_msg->header.frame_id = ""; //should probably fill with world
     joint_state_msg->header.stamp = ros::Time::now();
+    joint_state_msg->header.stamp.sec = ros::Time::now().sec;
 
     // read data from dynamixels
     dxl_comm_result = gbr->txRxPacket();
@@ -294,30 +295,36 @@ void MyRobot::initializeMotors()
     // configure motors: set operation mode, set max velocity, torque
     for (int i = 0; i < NUM_MOTORS; i++)
     {
+        ros::Duration(0.1).sleep();
         int dxl_comm_result = 0;
         uint8_t dxl_error = 0;
         if (IS_PRO[i])
         {
+            // set torque limit
+            dxl_comm_result = packetHandler->write2ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_PRO_TORQUE_LIMIT, (*joint_goal_torque)[i], &dxl_error);
+            if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
+            {
+                ROS_WARN_STREAM("Error setting torque limit PRO id: " << i+1 << " dxl_error: " << (int)dxl_error);
+            }
+
             // set torque
             dxl_comm_result = packetHandler->write2ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_PRO_GOAL_TORQUE, (*joint_goal_torque)[i], &dxl_error);
             if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
             {
-                ROS_WARN_STREAM("Error setting goal torque: " << dxl_comm_result);
-                continue;
+                ROS_WARN_STREAM("Error setting goal torque PRO id: " << i+1 << " dxl_error: " << (int)dxl_error);
             }
+
             // set opmode
             dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_PRO_OP_MODE, (*joint_op_mode)[i], &dxl_error);
             if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
             {
                 ROS_WARN_STREAM("Error setting op mode: " << dxl_comm_result);
-                continue;
             }
             // set velocity limit
             dxl_comm_result = packetHandler->write4ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_PRO_VEL_LIMIT, (int)((*joint_velocity_limit)[i]/DXL_PRO_VEL_RAW_TO_RAD), &dxl_error);
             if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
             {
                 ROS_WARN_STREAM("Error setting veloctiy limit: " << dxl_comm_result);
-                continue;
             }
             // set p gain
             // dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_PRO_VEL_P_GAIN, (*joint_op_mode)[i], &dxl_error);
@@ -329,25 +336,29 @@ void MyRobot::initializeMotors()
         }
         else
         {
+            dxl_comm_result = packetHandler->write2ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_MX_CURRENT_LIMIT, (*joint_goal_torque)[i], &dxl_error);
+            if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
+            {
+                ROS_WARN_STREAM("Error setting current limit MX id: " << i+1 << " dxl_error: " << (int)dxl_error);
+            }
+
             dxl_comm_result = packetHandler->write2ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_MX_GOAL_CURRENT, (*joint_goal_torque)[i], &dxl_error);
             if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
             {
-                ROS_WARN_STREAM("Error setting goal torque: " << dxl_comm_result);
-                continue;
+                ROS_WARN_STREAM("Error setting goal current MX id: " << i+1 << " dxl_error: " << (int)dxl_error);
             }
+
             dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_MX_OP_MODE, (*joint_op_mode)[i], &dxl_error);
             if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
             {
                 ROS_WARN_STREAM("Error setting op mode: " << dxl_comm_result);
-                continue;
             }
+
             // set velocity limit
-            ROS_INFO_STREAM("MX-Limit: " << (int)((*joint_velocity_limit)[i]/DXL_MX_VEL_RAW_TO_RAD));
             dxl_comm_result = packetHandler->write4ByteTxRx(portHandler, MOTOR_IDS[i], ADDR_MX_VEL_LIMIT, (int)((*joint_velocity_limit)[i]/DXL_MX_VEL_RAW_TO_RAD), &dxl_error);
             if (dxl_comm_result != COMM_SUCCESS || dxl_error != 0)
             {
                 ROS_WARN_STREAM("Error setting veloctiy limit: " << dxl_comm_result);
-                continue;
             }
         }
     }
@@ -448,7 +459,7 @@ void MyRobot::write()
             }
         }
         int val = (int)(cmd_raw[i][3] << 24 | cmd_raw[i][2] << 16 | cmd_raw[i][1] << 8 | cmd_raw[i][0]);
-        ROS_INFO_STREAM("dxl id: " << i+1 << " cmd: " << cmd[i] << ". vel_raw: " << val);
+        // ROS_INFO_STREAM("dxl id: " << i+1 << " cmd: " << cmd[i] << ". vel_raw: " << val);
     }
 
     // finally write commands
@@ -480,7 +491,7 @@ int main(int argc, char **argv)
     controller_manager::ControllerManager cm(&robot, node_handle);
 
     ros::Time timestamp = ros::Time::now();
-    ros::Rate rate(20); // in hz
+    ros::Rate rate(30); // in hz
 
     robot.switchTorque(TORQUE_ENABLE);
 

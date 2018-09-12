@@ -1,0 +1,8 @@
+<launch>
+
+	<include file="$(find def_actuation)/launch/dynamixel_hardware_control.launch" /> 
+
+    <node pkg="def_genie_teledyne" type="camera_example" name="teledyne_camera" output="screen" />
+
+
+</launch>

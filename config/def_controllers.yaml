@@ -1,27 +1,28 @@
 dyn_ef_robot:
   # Position Controllers:
+  # actually not in use
   joint1_controller:
-    type: velocity_controllers/JointPositionController
+    type: velocity_controllers/JointVelocityController
     joint: base_link_to_base_yaw_link_joint
     pid: {p: 3.0, i: 0.0, d: 0.0}
   joint2_controller:
-    type: velocity_controllers/JointPositionController
+    type: velocity_controllers/JointVelocityController
     joint: base_yaw_link_to_first_link_joint
     pid: {p: 3.0, i: 0.0, d: 0.0}
   joint3_controller:
-    type: velocity_controllers/JointPositionController
+    type: velocity_controllers/JointVelocityController
     joint: first_link_to_second_link_joint
     pid: {p: 3.0, i: 0.0, d: 0.0}
   joint4_controller:
-    type: velocity_controllers/JointPositionController
+    type: velocity_controllers/JointVelocityController
     joint: second_link_to_third_link_joint
     pid: {p: 3.0, i: 0.0, d: 0.0}
   joint5_controller:
-    type: velocity_controllers/JointPositionController
+    type: velocity_controllers/JointVelocityController
     joint: third_link_to_fourth_link_joint
     pid: {p: 3.0, i: 0.0, d: 0.0}
   joint6_controller:
-    type: velocity_controllers/JointPositionController
+    type: velocity_controllers/JointVelocityController
     joint: fourth_link_to_fifth_link_joint
     pid: {p: 3.0, i: 0.0, d: 0.0}
 
@@ -49,29 +50,29 @@ dyn_ef_robot:
         goal: 0.03
         # Position tolerance for a particular joint throughout the trajectory. 
         # If the joint position ever falls outside trajectory_position +/- tolerance, then the trajectory aborts. 
-        trajectory: 0.03
+        trajectory: 0.25
       base_yaw_link_to_first_link_joint:
         goal: 0.03
-        trajectory: 0.03
+        trajectory: 0.25
       first_link_to_second_link_joint:
         goal: 0.03
-        trajectory: 0.03
+        trajectory: 0.25
       second_link_to_third_link_joint:
         goal: 0.03
-        trajectory: 0.03
+        trajectory: 0.25
       third_link_to_fourth_link_joint:
         goal: 0.03
-        trajectory: 0.03
+        trajectory: 3.0
       fourth_link_to_fifth_link_joint:
         goal: 0.03
-        trajectory: 0.03
+        trajectory: 3.0
     gains: # Required because we're controlling a velocity interface
       base_link_to_base_yaw_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
       base_yaw_link_to_first_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
       first_link_to_second_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
       second_link_to_third_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
-      third_link_to_fourth_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
-      fourth_link_to_fifth_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
+      third_link_to_fourth_link_joint: {p: 10,  d: 0, i: 0.001, i_clamp: 1}
+      fourth_link_to_fifth_link_joint: {p: 10,  d: 0, i: 0.001, i_clamp: 1}
 
 
     # Enables sending JointTrajectory messages with a partial set of joints. Default is false
