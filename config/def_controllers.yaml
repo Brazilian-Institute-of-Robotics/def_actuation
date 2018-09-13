@@ -71,7 +71,7 @@ dyn_ef_robot:
       base_yaw_link_to_first_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
       first_link_to_second_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
       second_link_to_third_link_joint: {p: 5,  d: 0, i: 0.001, i_clamp: 1}
-      third_link_to_fourth_link_joint: {p: 10,  d: 0, i: 0.001, i_clamp: 1}
+      third_link_to_fourth_link_joint: {p: 5,  d: 0.1, i: 0.001, i_clamp: 1}
       fourth_link_to_fifth_link_joint: {p: 10,  d: 0, i: 0.001, i_clamp: 1}
 
 

@@ -491,7 +491,7 @@ int main(int argc, char **argv)
     controller_manager::ControllerManager cm(&robot, node_handle);
 
     ros::Time timestamp = ros::Time::now();
-    ros::Rate rate(30); // in hz
+    ros::Rate rate(50); // in hz
 
     robot.switchTorque(TORQUE_ENABLE);
 
