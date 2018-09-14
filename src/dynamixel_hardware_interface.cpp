@@ -50,6 +50,9 @@ class MyRobot : public hardware_interface::RobotHW
 
     bool retrievedParams;
 
+    // no torque mode for checking purposes, will be set by node params
+    bool noTorque;
+
     int seq;
 };
 
@@ -63,6 +66,17 @@ MyRobot::MyRobot(ros::NodeHandle nh)
     // get access inside the class to a nodeHandle
     node_handle_ = nh;
     pub_joint_states = node_handle_.advertise<sensor_msgs::JointState>("/joint_states", 100);
+
+    // get mode param. if not existent assume we are running in no-torque-mode
+    if (nh.hasParam("no_torque")) {
+        if (!node_handle_.getParam("no_torque", noTorque))
+        {
+            ROS_WARN_STREAM("could not read parameter 'no_torque' which determines the mode, be careful, motors might be able to move");
+        }
+    } else {
+        ROS_INFO("have no got torque param shit dude");
+        noTorque = true;
+    }
 
     // get motor configurations from parameter server
     joint_offsets = new std::vector<double>();
@@ -374,6 +388,9 @@ bool MyRobot::switchTorque(int value)
     /* enables the torque of the specified dynamxiel motor 
     and returns true if it worked 
     */
+    if (noTorque) {
+        return false;
+    }
     bool success = true;
     for (int i = 0; i < NUM_MOTORS; i++) {
         if (IS_PRO[i]) {
@@ -411,6 +428,9 @@ bool MyRobot::switchTorque(int value)
  */
 void MyRobot::write()
 {
+    if (noTorque) {
+        return;
+    }
     // TODO: implement safety limits, set velocity always to 0 if violated
     // get current cmd and convert to int
     bool dxl_addparam_result = false;
@@ -495,6 +515,7 @@ int main(int argc, char **argv)
 
     robot.switchTorque(TORQUE_ENABLE);
 
+
     while (ros::ok())
     {
         robot.readJointStates();
@@ -502,8 +523,8 @@ int main(int argc, char **argv)
         ros::Duration period = ros::Time::now() - timestamp;
         timestamp = ros::Time::now();
         cm.update(ros::Time::now(), period);
-
         robot.write();
+
         rate.sleep();
     }
     std::cout << "Disabling Torque!" << std::endl;

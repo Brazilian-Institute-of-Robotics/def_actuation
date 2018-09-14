@@ -1,8 +1,10 @@
 <launch>
+	<!-- launches actual hardware interface, allows enabling torque, be cautious -->
+	<include file="$(find def_actuation)/launch/dynamixel_hardware_control.launch" >
+        <arg name="no_torque" value="false" />
+    </include>
 
-	<include file="$(find def_actuation)/launch/dynamixel_hardware_control.launch" /> 
-
+    <!-- launches camera node -->
     <node pkg="def_genie_teledyne" type="camera_example" name="teledyne_camera" output="screen" />
-
 
 </launch>

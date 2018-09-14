@@ -10,6 +10,8 @@
     <rosparam file="$(find def_actuation)/config/dxl_motor_configuration.yaml" command="load"/>
 
     <!-- starting the robot hardware. reading the motor values and writing comands to the motors -->
+    <arg name="no_torque" default="true"/>
+    <param name="/dyn_ef_robot/no_torque" value="$(arg no_torque)" />
     <node pkg="def_actuation" type="dynamixel_hardware_interface" name="dynamixel_hardware_interface" output="screen" />
 
     <!-- starting the controllers -->

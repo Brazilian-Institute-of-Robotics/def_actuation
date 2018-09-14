@@ -7,7 +7,10 @@
   <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find dynamic_end_effector)/urdf/dynamic-ef.urdf.xacro'" />
   <param name="use_gui" value="$(arg gui)"/>
   
-  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+  <!-- launches actual hardware interface, does not allow enabling torque -->
+	<include file="$(find def_actuation)/launch/dynamixel_hardware_control.launch" >
+    <arg name="no_torque" value="true" />
+  </include>
+
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 </launch>
