@@ -23,9 +23,9 @@ for the Dynamixel motors. Remeber to also change in ```config/dxl_motor_configur
 
 # Launch it!
 
-To start the controller simply launch ```dynamixel_hardware_control.launch```.
+To start the controller simply launch ```dynamixel_hardware_control.launch```. If you want to actually command the motors, pass the argument ```no_torque:=false```.
 
 For validation purposes it might be necessary to have a look at the robots current position, but not enable torque (e.g. to move the arm by hand and see if the arm is calibrated correctly).
 To do this, launch ```display.launch``` (you need the package ```dynamic_end_effector``` which contains the robot description as .urdf)
 
-For combined use with ```def_cam_teledyne_nano``` just launch ```dyn_ef_robot_bringup_hardware.launch```.
+For combined use with ```def_cam_teledyne_nano``` just launch ```dyn_ef_robot_bringup_hardware.launch```. But be cautious, the motors will have torque enabled.
