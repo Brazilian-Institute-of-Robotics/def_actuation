@@ -1,5 +1,9 @@
 name: [base_link_to_base_yaw_link_joint, base_yaw_link_to_first_link_joint, first_link_to_second_link_joint,
   second_link_to_third_link_joint, third_link_to_fourth_link_joint, fourth_link_to_fifth_link_joint]
+
+first try for calibration:
 position: [-1.5407807515566831, -0.00459418876547779, -5.600528914951249, 0.8008785140298978, 3.419243649, 3.426913554]
+
+second:
 error: [0.0001502187062281113, 0.015284753358714934, 0.0019528431809661129, -0.015697854800842292, -0.01840777200000021, 0.0015339810000001286]
 position new: [-1.540630532850455, 0.010690564593237145, -5.598576071770283, 0.7851806592290556, 3.400835877, 3.428447535]
