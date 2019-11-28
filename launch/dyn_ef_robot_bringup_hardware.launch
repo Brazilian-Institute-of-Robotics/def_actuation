@@ -5,6 +5,12 @@
     </include>
 
     <!-- launches camera node -->
-    <node pkg="def_genie_teledyne" type="camera_example" name="teledyne_camera" output="screen" />
+    <node pkg="def_cam_teledyne_nano" type="camera_example" name="camera_example_node" required="true">
+        <param name="node_namespace" value="/dyn_ef_robot/camera1" type="str"/>
+        <param name="camera_serial_number" value="S1112960" type="str"/>
+<!--                <param name="camera_serial_number" value="S1112945" type="str"/>-->
+        <param name="path_to_config_file" value="package://def_cam_teledyne_nano/config/camera1.yaml" type="str"/>
+        <param name="topic_name" value="/dyn_ef_robot/camera1/image_raw" type="str"/>
+    </node>
 
 </launch>
